@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { AlertTriangle, RefreshCw, Dice } from "lucide-react";
+import { AlertTriangle, RefreshCw, Dices } from "lucide-react";
 import {
   createDefaultGameState,
   getProvablyFairParams,
@@ -29,7 +28,6 @@ const DiceGame = () => {
   const [gameState, setGameState] = useState(createDefaultGameState());
   const [gameResult, setGameResult] = useState<"win" | "lose" | null>(null);
   
-  // Calculate multiplier and win chance based on target value and bet type
   useEffect(() => {
     let effectiveWinChance;
     
@@ -39,10 +37,8 @@ const DiceGame = () => {
       effectiveWinChance = targetValue;
     }
     
-    // Cap the win chance at 40% as requested
     effectiveWinChance = Math.min(effectiveWinChance, 40);
     
-    // Calculate multiplier with a 5% house edge
     const houseEdgeMultiplier = 0.95;
     const calculatedMultiplier = (100 / effectiveWinChance) * houseEdgeMultiplier;
     
@@ -80,16 +76,13 @@ const DiceGame = () => {
       return;
     }
     
-    // Deduct bet amount from balance
     updateBalance((user?.balance || 0) - betValue);
     
-    // Generate a new game state for provably fair results
     const newGameState = createDefaultGameState();
     setGameState(newGameState);
     
     setIsRolling(true);
     
-    // Simulate dice roll animation
     const rollInterval = setInterval(() => {
       setRollResult(Math.random() * 100);
     }, 50);
@@ -97,12 +90,10 @@ const DiceGame = () => {
     setTimeout(() => {
       clearInterval(rollInterval);
       
-      // Get the final provably fair result
       const fairParams = getProvablyFairParams(newGameState);
       const finalResult = generateRandomFloat(fairParams, 0, 100, 2);
       setRollResult(finalResult);
       
-      // Determine if the player won
       let isWin = false;
       if (betType === "over" && finalResult > targetValue) {
         isWin = true;
@@ -140,7 +131,6 @@ const DiceGame = () => {
         <Card className="bg-zinc-900 border-zinc-800 lg:col-span-3">
           <CardContent className="p-4">
             <div className="flex flex-col items-center justify-center space-y-6 py-6">
-              {/* Dice result display */}
               <div className="w-32 h-32 rounded-xl flex items-center justify-center bg-zinc-800 border border-zinc-700 text-4xl font-bold">
                 {rollResult !== null ? rollResult.toFixed(2) : "?"}
               </div>
@@ -153,7 +143,6 @@ const DiceGame = () => {
                   {`Target: ${targetValue.toFixed(2)} (${betType === "over" ? ">" : "<"})`}
                 </div>
                 
-                {/* Progress bar showing target */}
                 <div 
                   className={`h-full ${betType === "over" ? "bg-red-600/50" : "bg-green-600/50"}`}
                   style={{ 
@@ -162,7 +151,6 @@ const DiceGame = () => {
                   }}
                 ></div>
                 
-                {/* Marker for result */}
                 {rollResult !== null && (
                   <div 
                     className="absolute top-0 bottom-0 w-0.5 bg-white"
@@ -182,7 +170,6 @@ const DiceGame = () => {
                 <TabsTrigger value="auto" className="data-[state=active]:bg-purple-600">Auto</TabsTrigger>
               </TabsList>
               <TabsContent value="manual" className="space-y-4 mt-4">
-                {/* Bet controls */}
                 <div className="space-y-3">
                   <div className="space-y-2">
                     <Label htmlFor="bet-amount">Bet Amount</Label>
@@ -274,7 +261,7 @@ const DiceGame = () => {
                   {isRolling ? (
                     <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <Dice className="mr-2 h-4 w-4" />
+                    <Dices className="mr-2 h-4 w-4" />
                   )}
                   {isRolling ? "Rolling..." : "Roll Dice"}
                 </Button>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,26 +30,20 @@ const MinesGame = () => {
   
   const GRID_SIZE = 25; // 5x5 grid
   
-  // Calculate the multiplier based on mine count and revealed tiles
   const calculateMultiplier = (mines: number, revealed: number) => {
     if (revealed === 0) return 1.0;
     
-    // This formula creates a reasonable multiplier growth
-    // Adjust constants as needed for your desired odds
     const totalCells = GRID_SIZE;
     const safeFields = totalCells - mines;
     let multi = 1.0;
     
-    // For each successful tile revealed, increase the multiplier
     for (let i = 0; i < revealed; i++) {
       multi *= (totalCells - i) / (totalCells - mines - i);
     }
     
-    // Round to 2 decimal places
     return Math.round(multi * 100) / 100;
   };
   
-  // Recalculate potential win whenever bet amount or multiplier changes
   useEffect(() => {
     const betValue = parseFloat(betAmount) || 0;
     setPotentialWin(betValue * multiplier);
@@ -86,21 +79,20 @@ const MinesGame = () => {
       return;
     }
     
-    // Generate a new game state for provably fair results
     const newGameState = createDefaultGameState();
     setGameState(newGameState);
     
-    // Generate mine positions
     const fairParams = getProvablyFairParams(newGameState);
     const minePositions = generateMultipleResults(fairParams, 0, GRID_SIZE - 1, mineCount);
     
-    // Ensure unique mine positions
     const uniqueMines = new Set<number>();
     let i = 0;
     while (uniqueMines.size < mineCount && i < 100) {
-      // Add cursor to prevent repetition
-      fairParams.cursor = i;
-      const pos = generateMultipleResults(fairParams, 0, GRID_SIZE - 1, 1)[0];
+      const modifiedParams = { 
+        ...fairParams,
+        cursor: i 
+      };
+      const pos = generateMultipleResults(modifiedParams, 0, GRID_SIZE - 1, 1)[0];
       uniqueMines.add(pos);
       i++;
     }
@@ -112,7 +104,6 @@ const MinesGame = () => {
     setMultiplier(1.0);
     setGameResult(null);
     
-    // Deduct bet amount from balance
     updateBalance((user?.balance || 0) - betValue);
   };
   
@@ -121,9 +112,7 @@ const MinesGame = () => {
       return;
     }
     
-    // Check if clicked on a mine
     if (mines.has(index)) {
-      // Game over - hit a mine
       const newRevealed = new Set(revealed);
       newRevealed.add(index);
       setRevealed(newRevealed);
@@ -140,16 +129,13 @@ const MinesGame = () => {
       return;
     }
     
-    // Successfully revealed a safe tile
     const newRevealed = new Set(revealed);
     newRevealed.add(index);
     setRevealed(newRevealed);
     
-    // Calculate new multiplier
     const newMultiplier = calculateMultiplier(mineCount, newRevealed.size);
     setMultiplier(newMultiplier);
     
-    // Check if all safe tiles are revealed (win condition)
     if (newRevealed.size === GRID_SIZE - mineCount) {
       cashout();
     }
@@ -167,7 +153,6 @@ const MinesGame = () => {
     const betValue = parseFloat(betAmount) || 0;
     const winAmount = betValue * multiplier;
     
-    // Add winnings to balance
     updateBalance((user?.balance || 0) + winAmount);
     
     toast({
@@ -185,7 +170,6 @@ const MinesGame = () => {
       return mines.has(index) ? "mine" : "gem";
     }
     
-    // Show all mines if game is over
     if (gameOver && mines.has(index)) {
       return "mine-hidden";
     }
@@ -200,7 +184,6 @@ const MinesGame = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
         <Card className="bg-zinc-900 border-zinc-800 col-span-2">
           <CardContent className="p-4">
-            {/* Game grid */}
             <div className="grid grid-cols-5 gap-2 aspect-square">
               {Array.from({ length: GRID_SIZE }).map((_, index) => (
                 <button
@@ -228,7 +211,6 @@ const MinesGame = () => {
         
         <Card className="bg-zinc-900 border-zinc-800">
           <CardContent className="p-4 space-y-4">
-            {/* Game controls */}
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="bet-amount">Bet Amount</Label>
