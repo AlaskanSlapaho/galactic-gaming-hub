@@ -2,7 +2,7 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/useAuth";
-import { CalendarIcon, DollarSign, GameController2 } from "lucide-react";
+import { CalendarIcon, DollarSign, Gamepad } from "lucide-react";
 import { format } from "date-fns";
 
 const HistoryPage = () => {
@@ -88,7 +88,7 @@ const HistoryPage = () => {
                         {transaction.type === "deposit" || transaction.type === "withdrawal" ? (
                           <DollarSign className="h-5 w-5" />
                         ) : (
-                          <GameController2 className="h-5 w-5" />
+                          <Gamepad className="h-5 w-5" />
                         )}
                       </div>
                       <div>
