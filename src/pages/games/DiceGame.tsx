@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,7 @@ const DiceGame = () => {
   const [targetValue, setTargetValue] = useState<number>(50);
   const [betType, setBetType] = useState<"over" | "under">("over");
   const [winChance, setWinChance] = useState<number>(49.5);
-  const [multiplier, setMultiplier] = useState<number>(2.0);
+  const [multiplier, setMultiplier] = useState<number>(1.9);
   const [rollResult, setRollResult] = useState<number | null>(null);
   const [isRolling, setIsRolling] = useState<boolean>(false);
   const [gameState, setGameState] = useState(createDefaultGameState());
@@ -37,13 +38,23 @@ const DiceGame = () => {
       effectiveWinChance = targetValue;
     }
     
+    // Ensure win chance is between 1% and 40% (cap at 40%)
     effectiveWinChance = Math.min(effectiveWinChance, 40);
+    effectiveWinChance = Math.max(effectiveWinChance, 1);
     
+    // Calculate multiplier with a 5% house edge
+    // For a 50% chance, multiplier should be 1.9x (not the mathematically fair 2x)
     const houseEdgeMultiplier = 0.95;
     const calculatedMultiplier = (100 / effectiveWinChance) * houseEdgeMultiplier;
     
+    // At 50% chance, force multiplier to be 1.9x
+    let finalMultiplier = calculatedMultiplier;
+    if (effectiveWinChance >= 49 && effectiveWinChance <= 51) {
+      finalMultiplier = 1.9;
+    }
+    
     setWinChance(effectiveWinChance);
-    setMultiplier(parseFloat(calculatedMultiplier.toFixed(2)));
+    setMultiplier(parseFloat(finalMultiplier.toFixed(2)));
   }, [targetValue, betType]);
   
   const handleRoll = () => {

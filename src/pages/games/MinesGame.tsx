@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,11 +36,18 @@ const MinesGame = () => {
     
     const totalCells = GRID_SIZE;
     const safeFields = totalCells - mines;
-    let multi = 1.0;
     
+    // Calculate the mathematical fair multiplier
+    let multi = 1.0;
     for (let i = 0; i < revealed; i++) {
       multi *= (totalCells - i) / (totalCells - mines - i);
     }
+    
+    // Apply a house edge and cap the multiplier to prevent it from going too high
+    multi = multi * 0.95; // 5% house edge
+    
+    // Cap the multiplier to 20x as requested
+    multi = Math.min(multi, 20);
     
     return Math.round(multi * 100) / 100;
   };
@@ -86,15 +94,13 @@ const MinesGame = () => {
     const minePositions = generateMultipleResults(fairParams, 0, GRID_SIZE - 1, mineCount);
     
     const uniqueMines = new Set<number>();
-    let i = 0;
-    while (uniqueMines.size < mineCount && i < 100) {
+    for (let i = 0; i < 100 && uniqueMines.size < mineCount; i++) {
       const modifiedParams = { 
         ...fairParams,
         cursor: i 
       };
       const pos = generateMultipleResults(modifiedParams, 0, GRID_SIZE - 1, 1)[0];
       uniqueMines.add(pos);
-      i++;
     }
     
     setMines(uniqueMines);

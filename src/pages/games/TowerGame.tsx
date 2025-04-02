@@ -32,25 +32,19 @@ const TowerGame = () => {
   const ROWS = 5;
   const TILES_PER_ROW = 5;
   
-  // The maximum multiplier at the top level should be 16x as requested
-  const rowMultipliers = [
-    1.5,  // Row 0
-    2,    // Row 1
-    3,    // Row 2
-    6,    // Row 3
-    16    // Row 4
-  ];
+  // Define multipliers for different mine counts
+  const baseMultipliers = [1.2, 1.5, 2, 3, 8]; // For 1 mine per row
+  const multiplier2Mines = [1.5, 2, 3, 6, 16]; // For 2 mines per row
+  const multiplier3Mines = [3, 4, 6, 12, 32]; // For 3 mines per row
   
-  // Adjust multipliers based on mine count
-  useEffect(() => {
-    if (minesPerRow > 1) {
-      // Increase multipliers for higher mine counts
-      const multiplierBoost = 1 + (minesPerRow - 1) * 0.3;
-      const adjustedMultipliers = rowMultipliers.map(m => parseFloat((m * multiplierBoost).toFixed(2)));
-      // But ensure top level doesn't exceed 16x
-      adjustedMultipliers[4] = Math.min(adjustedMultipliers[4], 16);
+  const getRowMultipliers = () => {
+    switch(minesPerRow) {
+      case 1: return baseMultipliers;
+      case 2: return multiplier2Mines;
+      case 3: return multiplier3Mines;
+      default: return baseMultipliers;
     }
-  }, [minesPerRow]);
+  };
   
   const startNewGame = () => {
     if (!isAuthenticated) {
@@ -93,15 +87,19 @@ const TowerGame = () => {
     for (let row = 0; row < ROWS; row++) {
       const minePositions: number[] = [];
       
-      // Use different cursor values to ensure randomness
+      // Add mines for each row using different cursor values
       for (let i = 0; i < minesPerRow; i++) {
-        const cursorParams = { ...fairParams, cursor: row * 10 + i };
+        // Ensure unique positions by checking array
         let position;
-        
-        // Ensure no duplicate mine positions in the same row
+        let attempts = 0;
         do {
+          const cursorParams = { 
+            ...fairParams, 
+            cursor: row * 10 + i + attempts
+          };
           position = generateRandomNumber(cursorParams, 0, TILES_PER_ROW - 1);
-        } while (minePositions.includes(position));
+          attempts++;
+        } while (minePositions.includes(position) && attempts < 50);
         
         minePositions.push(position);
       }
@@ -152,6 +150,9 @@ const TowerGame = () => {
     newRevealedSafeTiles[row].push(tile);
     setRevealedSafeTiles(newRevealedSafeTiles);
     
+    // Get multipliers for current mine count
+    const rowMultipliers = getRowMultipliers();
+    
     // Set the multiplier based on the current row
     setMultiplier(rowMultipliers[row]);
     
@@ -192,6 +193,7 @@ const TowerGame = () => {
   const renderTowerRow = (row: number) => {
     const isCurrentRow = row === currentRow;
     const rowCompleted = row < currentRow;
+    const rowMultipliers = getRowMultipliers();
     
     return (
       <div
