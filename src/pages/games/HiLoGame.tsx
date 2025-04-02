@@ -140,6 +140,7 @@ const HiLoGame = () => {
     setFirstRound(true);
     setMultiplier(1.0);
     setGameResult(null);
+    setNextCard(null); // Reset next card
     setMessage("Higher, Lower, or Same as the next card?");
   };
   

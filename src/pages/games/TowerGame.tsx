@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,22 +31,16 @@ const TowerGame = () => {
   const ROWS = 5;
   const TILES_PER_ROW = 5;
   
-  // Define base multipliers with 0.2 increase per row
-  const baseMultipliers = [1.2, 1.4, 1.6, 1.8, 2.0]; // For 1 mine per row
-
-  // Calculate multipliers for different mine counts
   const getRowMultipliers = () => {
     switch(minesPerRow) {
       case 1: 
-        return baseMultipliers;
+        return [1.2, 1.5, 1.8, 2.4, 3.0]; // Max 3x for 1 mine per row
       case 2: 
-        // Multiply base by 1.5 for 2 mines
-        return baseMultipliers.map(m => parseFloat((m * 1.5).toFixed(2)));
+        return [1.5, 2.0, 3.0, 4.5, 6.0]; // Max 6x for 2 mines per row
       case 3: 
-        // Multiply base by 3 for 3 mines
-        return baseMultipliers.map(m => parseFloat((m * 3).toFixed(2)));
+        return [2.8, 3.5, 4.5, 6.0, 8.0]; // Starting at 2.8x to 8x for 3 mines per row
       default: 
-        return baseMultipliers;
+        return [1.2, 1.5, 1.8, 2.4, 3.0];
     }
   };
   
@@ -258,7 +251,6 @@ const TowerGame = () => {
         <Card className="bg-zinc-900 border-zinc-800 lg:col-span-2">
           <CardContent className="p-4">
             <div className="flex flex-col space-y-6 py-6">
-              {/* Tower rows - displayed in reverse order (top to bottom) */}
               {Array.from({ length: ROWS }).map((_, i) => renderTowerRow(ROWS - 1 - i))}
             </div>
           </CardContent>
@@ -266,7 +258,6 @@ const TowerGame = () => {
         
         <Card className="bg-zinc-900 border-zinc-800">
           <CardContent className="p-4 space-y-4">
-            {/* Game controls */}
             <div className="space-y-3">
               <div className="space-y-2">
                 <Label htmlFor="bet-amount">Bet Amount</Label>

@@ -6,7 +6,7 @@ import { useToast } from "@/components/ui/use-toast";
 
 export function AdminCommandHandler() {
   const { messages, addMessage } = useChatStore();
-  const { user, isAdmin } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
   
   useEffect(() => {
@@ -20,73 +20,76 @@ export function AdminCommandHandler() {
     
     const content = latestMessage.content.trim();
     
-    // Process admin commands - NEW: Check only for AlaskanSentinel or admin users
-    const isAdminUser = user.isAdmin || user.username === "AlaskanSentinel";
-    
-    if (isAdminUser && (content.startsWith("/add ") || content.startsWith("/remove "))) {
-      const isAddCommand = content.startsWith("/add ");
-      const parts = content.split(" ");
+    // Check if the message is a command (/add or /remove)
+    if (content.startsWith("/add ") || content.startsWith("/remove ")) {
+      // Check if the user is AlaskanSentinel or has admin rights
+      const isAdminUser = user.isAdmin || user.username === "AlaskanSentinel";
       
-      if (parts.length !== 3) {
-        // Invalid command format
+      if (isAdminUser) {
+        const isAddCommand = content.startsWith("/add ");
+        const parts = content.split(" ");
+        
+        if (parts.length !== 3) {
+          // Invalid command format
+          addMessage({
+            id: `system-${Date.now()}`,
+            content: `Invalid command format. Use: ${isAddCommand ? "/add username amount" : "/remove username amount"}`,
+            sender: "System",
+            timestamp: new Date(),
+            isSystem: true,
+          });
+          return;
+        }
+        
+        const targetUsername = parts[1];
+        const amount = parseInt(parts[2], 10);
+        
+        if (isNaN(amount) || amount <= 0) {
+          // Invalid amount
+          addMessage({
+            id: `system-${Date.now()}`,
+            content: "Invalid amount. Please use a positive number.",
+            sender: "System",
+            timestamp: new Date(),
+            isSystem: true,
+          });
+          return;
+        }
+        
+        // Here you would call the useAuth utility to update a user's balance
+        // This depends on your implementation of the auth store
+        
+        // For this demo, we'll just show a toast and system message
+        toast({
+          title: isAddCommand ? "Credits Added" : "Credits Removed",
+          description: `${isAddCommand ? "Added" : "Removed"} ${amount.toLocaleString()} credits ${isAddCommand ? "to" : "from"} ${targetUsername}'s account.`,
+        });
+        
         addMessage({
           id: `system-${Date.now()}`,
-          content: `Invalid command format. Use: ${isAddCommand ? "/add username amount" : "/remove username amount"}`,
+          content: `${isAddCommand ? "Added" : "Removed"} ${amount.toLocaleString()} credits ${isAddCommand ? "to" : "from"} ${targetUsername}'s account.`,
           sender: "System",
           timestamp: new Date(),
           isSystem: true,
         });
-        return;
-      }
-      
-      const targetUsername = parts[1];
-      const amount = parseInt(parts[2], 10);
-      
-      if (isNaN(amount) || amount <= 0) {
-        // Invalid amount
+        
+        // Send a webhook to Discord with the admin action
+        sendDiscordWebhook({
+          action: isAddCommand ? "Added Credits" : "Removed Credits",
+          targetUser: targetUsername,
+          amount: amount,
+          adminUser: user.username
+        });
+      } else {
+        // Command attempted by non-admin user
         addMessage({
           id: `system-${Date.now()}`,
-          content: "Invalid amount. Please use a positive number.",
+          content: "You don't have permission to use this command.",
           sender: "System",
           timestamp: new Date(),
           isSystem: true,
         });
-        return;
       }
-      
-      // Here you would call the useAuth utility to update a user's balance
-      // This depends on your implementation of the auth store
-      
-      // For this demo, we'll just show a toast and system message
-      toast({
-        title: isAddCommand ? "Credits Added" : "Credits Removed",
-        description: `${isAddCommand ? "Added" : "Removed"} ${amount.toLocaleString()} credits ${isAddCommand ? "to" : "from"} ${targetUsername}'s account.`,
-      });
-      
-      addMessage({
-        id: `system-${Date.now()}`,
-        content: `${isAddCommand ? "Added" : "Removed"} ${amount.toLocaleString()} credits ${isAddCommand ? "to" : "from"} ${targetUsername}'s account.`,
-        sender: "System",
-        timestamp: new Date(),
-        isSystem: true,
-      });
-      
-      // Send a webhook to Discord with the admin action
-      sendDiscordWebhook({
-        action: isAddCommand ? "Added Credits" : "Removed Credits",
-        targetUser: targetUsername,
-        amount: amount,
-        adminUser: user.username
-      });
-    } else if (content.startsWith("/add ") || content.startsWith("/remove ")) {
-      // Command attempted by non-admin user
-      addMessage({
-        id: `system-${Date.now()}`,
-        content: "You don't have permission to use this command.",
-        sender: "System",
-        timestamp: new Date(),
-        isSystem: true,
-      });
     }
   }, [messages, user, toast, addMessage]);
   

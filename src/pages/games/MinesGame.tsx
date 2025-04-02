@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -93,11 +94,19 @@ const MinesGame = () => {
     
     const uniqueMines = new Set<number>();
     
-    while (uniqueMines.size < mineCount) {
-      const position = generateMultipleResults(fairParams, 0, GRID_SIZE - 1, 1)[0];
+    // Simplified approach to generate unique mine positions
+    const positions = generateMultipleResults(fairParams, 0, GRID_SIZE - 1, mineCount);
+    positions.forEach(position => {
       uniqueMines.add(position);
-      
-      fairParams.cursor = (fairParams.cursor || 0) + Math.floor(Math.random() * 100);
+    });
+    
+    // Ensure we have exactly mineCount mines
+    if (uniqueMines.size < mineCount) {
+      // If there were duplicate numbers in the generated results, add random positions
+      while (uniqueMines.size < mineCount) {
+        const randomPosition = Math.floor(Math.random() * GRID_SIZE);
+        uniqueMines.add(randomPosition);
+      }
     }
     
     setMines(uniqueMines);
