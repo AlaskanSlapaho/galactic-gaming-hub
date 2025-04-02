@@ -44,7 +44,8 @@ export const createDefaultGameState = () => {
     return {
         clientSeed: Math.random().toString(36).substring(2, 15),
         serverSeed: generateServerSeed(),
-        nonce: Math.floor(Math.random() * 1000000)
+        nonce: Math.floor(Math.random() * 1000000),
+        cursor: 0 // Add cursor property to default game state
     };
 };
 
@@ -52,6 +53,7 @@ export const getProvablyFairParams = (state) => {
     return {
         clientSeed: state.clientSeed,
         serverSeed: state.serverSeed,
-        nonce: state.nonce
+        nonce: state.nonce,
+        cursor: state.cursor || 0 // Ensure cursor is included in params
     };
 };
