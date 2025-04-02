@@ -10,31 +10,85 @@ import {
   TableRow 
 } from "@/components/ui/table";
 import { Trophy, ArrowDown } from "lucide-react";
-
-// Sample data - would be replaced with actual data from backend
-const topPlayers = [
-  { rank: 1, username: "Lucky777", winnings: 250000, games: 543, biggestWin: 35000 },
-  { rank: 2, username: "GalaxyGambler", winnings: 175000, games: 612, biggestWin: 21000 },
-  { rank: 3, username: "CryptoWinner", winnings: 125000, games: 387, biggestWin: 18500 },
-  { rank: 4, username: "BetMaster", winnings: 95000, games: 429, biggestWin: 15000 },
-  { rank: 5, username: "LuckyStreak", winnings: 85000, games: 315, biggestWin: 12000 },
-  { rank: 6, username: "RiskyPlayer", winnings: 78000, games: 276, biggestWin: 9500 },
-  { rank: 7, username: "HighRoller", winnings: 65000, games: 210, biggestWin: 8700 },
-  { rank: 8, username: "DiamondBet", winnings: 58000, games: 195, biggestWin: 7800 },
-  { rank: 9, username: "VIPGamer", winnings: 42000, games: 168, biggestWin: 6200 },
-  { rank: 10, username: "LuckyCharm", winnings: 35000, games: 124, biggestWin: 5500 },
-];
-
-// Recent big wins
-const recentBigWins = [
-  { username: "StellarWinner", game: "Mines", amount: 22500, multiplier: "15.0x", timestamp: "2h ago" },
-  { username: "MoonPlayer", game: "Tower", amount: 18000, multiplier: "12.0x", timestamp: "4h ago" },
-  { username: "CryptoKing", game: "Blackjack", amount: 15000, multiplier: "2.5x", timestamp: "7h ago" },
-  { username: "BetWizard", game: "Dice", amount: 12500, multiplier: "25.0x", timestamp: "10h ago" },
-  { username: "GalacticBet", game: "HiLo", amount: 9500, multiplier: "19.0x", timestamp: "12h ago" },
-];
+import { useAuth } from "@/hooks/useAuth";
 
 const LeaderboardPage = () => {
+  const { user } = useAuth();
+  
+  // We'll simulate real player data based on the current user
+  // In a real application, this would come from a database
+  const generateTopPlayers = () => {
+    const defaultPlayers = [
+      { rank: 1, username: "Lucky777", winnings: 250000, games: 543, biggestWin: 35000 },
+      { rank: 2, username: "GalaxyGambler", winnings: 175000, games: 612, biggestWin: 21000 },
+      { rank: 3, username: "CryptoWinner", winnings: 125000, games: 387, biggestWin: 18500 },
+      { rank: 4, username: "BetMaster", winnings: 95000, games: 429, biggestWin: 15000 },
+      { rank: 5, username: "LuckyStreak", winnings: 85000, games: 315, biggestWin: 12000 },
+      { rank: 6, username: "RiskyPlayer", winnings: 78000, games: 276, biggestWin: 9500 },
+      { rank: 7, username: "HighRoller", winnings: 65000, games: 210, biggestWin: 8700 },
+      { rank: 8, username: "DiamondBet", winnings: 58000, games: 195, biggestWin: 7800 },
+      { rank: 9, username: "VIPGamer", winnings: 42000, games: 168, biggestWin: 6200 },
+      { rank: 10, username: "LuckyCharm", winnings: 35000, games: 124, biggestWin: 5500 },
+    ];
+
+    // If we have a logged-in user, add them to the leaderboard if they're not already there
+    if (user && !defaultPlayers.some(p => p.username === user.username)) {
+      // Insert the user at a random position from 1-5, shifting others down
+      const userPosition = Math.floor(Math.random() * 5) + 1;
+      const userWinnings = Math.floor(Math.random() * 100000) + 100000;
+      
+      // Create a copy to avoid mutating the original array
+      const updatedPlayers = [...defaultPlayers];
+      
+      // Insert the user and update ranks
+      updatedPlayers.splice(userPosition - 1, 0, {
+        rank: userPosition,
+        username: user.username,
+        winnings: userWinnings,
+        games: Math.floor(Math.random() * 300) + 100,
+        biggestWin: Math.floor(userWinnings / (Math.random() * 5 + 5)),
+      });
+      
+      // Update ranks for all players
+      return updatedPlayers.slice(0, 10).map((player, idx) => ({
+        ...player,
+        rank: idx + 1
+      }));
+    }
+    
+    return defaultPlayers;
+  };
+
+  const generateRecentWins = () => {
+    const defaultWins = [
+      { username: "StellarWinner", game: "Mines", amount: 22500, multiplier: "15.0x", timestamp: "2h ago" },
+      { username: "MoonPlayer", game: "Tower", amount: 18000, multiplier: "12.0x", timestamp: "4h ago" },
+      { username: "CryptoKing", game: "Blackjack", amount: 15000, multiplier: "2.5x", timestamp: "7h ago" },
+      { username: "BetWizard", game: "Dice", amount: 12500, multiplier: "25.0x", timestamp: "10h ago" },
+      { username: "GalacticBet", game: "HiLo", amount: 9500, multiplier: "19.0x", timestamp: "12h ago" },
+    ];
+
+    // If user is logged in, add them to the recent wins
+    if (user) {
+      const userGameTypes = ["Mines", "Dice", "Tower", "Blackjack", "HiLo"];
+      const userGame = userGameTypes[Math.floor(Math.random() * userGameTypes.length)];
+      const userWin = {
+        username: user.username,
+        game: userGame,
+        amount: Math.floor(Math.random() * 20000) + 5000,
+        multiplier: (Math.random() * 15 + 2).toFixed(1) + "x",
+        timestamp: "Just now"
+      };
+      
+      return [userWin, ...defaultWins.slice(0, 4)];
+    }
+    
+    return defaultWins;
+  };
+
+  const topPlayers = generateTopPlayers();
+  const recentBigWins = generateRecentWins();
+
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="text-3xl font-bold mb-6 text-center">Leaderboard</h1>
@@ -56,7 +110,10 @@ const LeaderboardPage = () => {
                 </div>
                 
                 <div className="text-center">
-                  <h3 className="text-2xl font-bold">{player.username}</h3>
+                  <h3 className="text-2xl font-bold">
+                    {player.username}
+                    {player.username === user?.username ? " (You)" : ""}
+                  </h3>
                   <p className="text-lg text-green-500 font-medium mt-1">
                     {player.winnings.toLocaleString()} Credits
                   </p>
@@ -91,9 +148,12 @@ const LeaderboardPage = () => {
             </TableHeader>
             <TableBody>
               {topPlayers.map((player) => (
-                <TableRow key={player.rank} className="border-zinc-800">
+                <TableRow key={player.rank} className={`border-zinc-800 ${player.username === user?.username ? "bg-zinc-800/50" : ""}`}>
                   <TableCell className="font-medium">#{player.rank}</TableCell>
-                  <TableCell>{player.username}</TableCell>
+                  <TableCell>
+                    {player.username}
+                    {player.username === user?.username ? " (You)" : ""}
+                  </TableCell>
                   <TableCell className="text-right text-green-500">
                     {player.winnings.toLocaleString()}
                   </TableCell>
@@ -126,8 +186,11 @@ const LeaderboardPage = () => {
             </TableHeader>
             <TableBody>
               {recentBigWins.map((win, index) => (
-                <TableRow key={index} className="border-zinc-800">
-                  <TableCell className="font-medium">{win.username}</TableCell>
+                <TableRow key={index} className={`border-zinc-800 ${win.username === user?.username ? "bg-zinc-800/50" : ""}`}>
+                  <TableCell className="font-medium">
+                    {win.username}
+                    {win.username === user?.username ? " (You)" : ""}
+                  </TableCell>
                   <TableCell>{win.game}</TableCell>
                   <TableCell className="text-right text-green-500">
                     {win.amount.toLocaleString()}

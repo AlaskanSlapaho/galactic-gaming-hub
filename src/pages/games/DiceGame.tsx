@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,23 +37,21 @@ const DiceGame = () => {
       effectiveWinChance = targetValue;
     }
     
-    // Ensure win chance is between 1% and 40% (cap at 40%)
-    effectiveWinChance = Math.min(effectiveWinChance, 40);
+    // Ensure win chance is between 1% and 95%
+    effectiveWinChance = Math.min(effectiveWinChance, 95);
     effectiveWinChance = Math.max(effectiveWinChance, 1);
     
     // Calculate multiplier with a 5% house edge
-    // For a 50% chance, multiplier should be 1.9x (not the mathematically fair 2x)
     const houseEdgeMultiplier = 0.95;
-    const calculatedMultiplier = (100 / effectiveWinChance) * houseEdgeMultiplier;
+    let calculatedMultiplier = (100 / effectiveWinChance) * houseEdgeMultiplier;
     
-    // At 50% chance, force multiplier to be 1.9x
-    let finalMultiplier = calculatedMultiplier;
-    if (effectiveWinChance >= 49 && effectiveWinChance <= 51) {
-      finalMultiplier = 1.9;
+    // Special case: For a 50% chance (target value 50), force multiplier to be 1.9x
+    if ((betType === "over" && targetValue === 50) || (betType === "under" && targetValue === 50)) {
+      calculatedMultiplier = 1.9;
     }
     
     setWinChance(effectiveWinChance);
-    setMultiplier(parseFloat(finalMultiplier.toFixed(2)));
+    setMultiplier(parseFloat(calculatedMultiplier.toFixed(2)));
   }, [targetValue, betType]);
   
   const handleRoll = () => {

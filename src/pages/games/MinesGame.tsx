@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,16 +90,14 @@ const MinesGame = () => {
     setGameState(newGameState);
     
     const fairParams = getProvablyFairParams(newGameState);
-    const minePositions = generateMultipleResults(fairParams, 0, GRID_SIZE - 1, mineCount);
     
     const uniqueMines = new Set<number>();
-    for (let i = 0; i < 100 && uniqueMines.size < mineCount; i++) {
-      const modifiedParams = { 
-        ...fairParams,
-        cursor: i 
-      };
-      const pos = generateMultipleResults(modifiedParams, 0, GRID_SIZE - 1, 1)[0];
-      uniqueMines.add(pos);
+    
+    while (uniqueMines.size < mineCount) {
+      const position = generateMultipleResults(fairParams, 0, GRID_SIZE - 1, 1)[0];
+      uniqueMines.add(position);
+      
+      fairParams.cursor = (fairParams.cursor || 0) + Math.floor(Math.random() * 100);
     }
     
     setMines(uniqueMines);

@@ -23,51 +23,108 @@ import {
   Layers,
   Bomb
 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
-// Sample data - would be replaced with actual data from backend
-const gameHistory = [
-  { id: "123456", game: "Dice", bet: 500, multiplier: "1.98x", payout: 990, result: "win", timestamp: "2023-06-15 14:32:15" },
-  { id: "123455", game: "Mines", bet: 1000, multiplier: "3.25x", payout: 3250, result: "win", timestamp: "2023-06-15 14:30:22" },
-  { id: "123454", game: "Tower", bet: 750, multiplier: "0x", payout: 0, result: "lose", timestamp: "2023-06-15 14:28:55" },
-  { id: "123453", game: "Blackjack", bet: 500, multiplier: "2.0x", payout: 1000, result: "win", timestamp: "2023-06-15 14:25:18" },
-  { id: "123452", game: "HiLo", bet: 1000, multiplier: "0x", payout: 0, result: "lose", timestamp: "2023-06-15 14:22:30" },
-  { id: "123451", game: "Mines", bet: 250, multiplier: "0x", payout: 0, result: "lose", timestamp: "2023-06-15 14:20:45" },
-  { id: "123450", game: "Dice", bet: 500, multiplier: "1.98x", payout: 990, result: "win", timestamp: "2023-06-15 14:18:10" },
-  { id: "123449", game: "Tower", bet: 1000, multiplier: "6.0x", payout: 6000, result: "win", timestamp: "2023-06-15 14:15:22" },
-  { id: "123448", game: "Blackjack", bet: 500, multiplier: "0x", payout: 0, result: "lose", timestamp: "2023-06-15 14:12:55" },
-  { id: "123447", game: "HiLo", bet: 750, multiplier: "2.5x", payout: 1875, result: "win", timestamp: "2023-06-15 14:10:18" },
-  { id: "123446", game: "Mines", bet: 500, multiplier: "0x", payout: 0, result: "lose", timestamp: "2023-06-15 14:08:30" },
-  { id: "123445", game: "Dice", bet: 250, multiplier: "1.98x", payout: 495, result: "win", timestamp: "2023-06-15 14:05:45" },
-  { id: "123444", game: "Tower", bet: 500, multiplier: "0x", payout: 0, result: "lose", timestamp: "2023-06-15 14:03:10" },
-  { id: "123443", game: "Blackjack", bet: 1000, multiplier: "2.0x", payout: 2000, result: "win", timestamp: "2023-06-15 14:00:22" },
-  { id: "123442", game: "HiLo", bet: 500, multiplier: "0x", payout: 0, result: "lose", timestamp: "2023-06-15 13:58:55" },
-];
-
-// Game icons
-const gameIcons = {
-  "Dice": <Dices className="h-4 w-4" />,
-  "Mines": <Bomb className="h-4 w-4" />,
-  "Tower": <Layers className="h-4 w-4" />,
-  "Blackjack": <div className="font-bold text-sm">21</div>,
-  "HiLo": <ArrowDownUp className="h-4 w-4" />
-};
-
-// Stats summary data
-const statsSummary = {
-  totalBets: 2548,
-  totalWagered: 1250000,
-  totalWon: 1375000,
-  netProfit: 125000,
-  winRate: 54.2,
-  averageMultiplier: 2.34
-};
-
-const HistoryPage = () => {
+const TransactionsPage = () => {
+  const { user } = useAuth();
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState({
     game: "all",
     result: "all"
   });
+  
+  // Generate transaction history based on the current user
+  const generateGameHistory = () => {
+    if (!user) return [];
+    
+    const gameTypes = ["Dice", "Mines", "Tower", "Blackjack", "HiLo"];
+    const results = ["win", "lose"];
+    const timestamps = [];
+    
+    // Generate timestamps for the last two days
+    const now = new Date();
+    for (let i = 0; i < 15; i++) {
+      const date = new Date(now);
+      date.setMinutes(now.getMinutes() - (i * 30));
+      timestamps.push(date);
+    }
+    
+    // Generate history entries
+    return timestamps.map((timestamp, i) => {
+      const gameType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
+      const result = results[Math.floor(Math.random() * results.length)];
+      const bet = Math.floor(Math.random() * 1000) + 200;
+      const multiplier = result === "win" ? 
+        ((Math.random() * 3) + 1).toFixed(2) : 
+        "0";
+      const payout = result === "win" ? Math.floor(bet * parseFloat(multiplier)) : 0;
+      
+      return {
+        id: `tx-${Date.now()}-${i}`,
+        game: gameType,
+        bet,
+        multiplier: multiplier + "x",
+        payout,
+        result,
+        timestamp: timestamp.toLocaleString('en-US', {
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        })
+      };
+    });
+  };
+  
+  // Generate stats based on history
+  const generateStatsSummary = (history) => {
+    if (!history.length) return {
+      totalBets: 0,
+      totalWagered: 0,
+      totalWon: 0,
+      netProfit: 0,
+      winRate: 0,
+      averageMultiplier: 0
+    };
+    
+    const totalBets = history.length;
+    const totalWagered = history.reduce((sum, bet) => sum + bet.bet, 0);
+    const totalWon = history.reduce((sum, bet) => sum + bet.payout, 0);
+    const netProfit = totalWon - totalWagered;
+    const wins = history.filter(bet => bet.result === "win").length;
+    const winRate = (wins / totalBets) * 100;
+    
+    const winMultipliers = history
+      .filter(bet => bet.result === "win")
+      .map(bet => parseFloat(bet.multiplier));
+    
+    const averageMultiplier = winMultipliers.length 
+      ? winMultipliers.reduce((sum, mult) => sum + parseFloat(mult), 0) / winMultipliers.length
+      : 0;
+    
+    return {
+      totalBets,
+      totalWagered,
+      totalWon,
+      netProfit,
+      winRate: Math.round(winRate * 10) / 10,
+      averageMultiplier: Math.round(averageMultiplier * 100) / 100
+    };
+  };
+  
+  const gameHistory = generateGameHistory();
+  const statsSummary = generateStatsSummary(gameHistory);
+  
+  // Game icons
+  const gameIcons = {
+    "Dice": <Dices className="h-4 w-4" />,
+    "Mines": <Bomb className="h-4 w-4" />,
+    "Tower": <Layers className="h-4 w-4" />,
+    "Blackjack": <div className="font-bold text-sm">21</div>,
+    "HiLo": <ArrowDownUp className="h-4 w-4" />
+  };
   
   // Filter history based on selected filters
   const filteredHistory = gameHistory.filter(item => {
@@ -86,7 +143,7 @@ const HistoryPage = () => {
   
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6 text-center">Game History</h1>
+      <h1 className="text-3xl font-bold mb-6 text-center">Transactions</h1>
       
       {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -275,4 +332,4 @@ const HistoryPage = () => {
   );
 };
 
-export default HistoryPage;
+export default TransactionsPage;

@@ -32,17 +32,22 @@ const TowerGame = () => {
   const ROWS = 5;
   const TILES_PER_ROW = 5;
   
-  // Define multipliers for different mine counts
-  const baseMultipliers = [1.2, 1.5, 2, 3, 8]; // For 1 mine per row
-  const multiplier2Mines = [1.5, 2, 3, 6, 16]; // For 2 mines per row
-  const multiplier3Mines = [3, 4, 6, 12, 32]; // For 3 mines per row
-  
+  // Define base multipliers with 0.2 increase per row
+  const baseMultipliers = [1.2, 1.4, 1.6, 1.8, 2.0]; // For 1 mine per row
+
+  // Calculate multipliers for different mine counts
   const getRowMultipliers = () => {
     switch(minesPerRow) {
-      case 1: return baseMultipliers;
-      case 2: return multiplier2Mines;
-      case 3: return multiplier3Mines;
-      default: return baseMultipliers;
+      case 1: 
+        return baseMultipliers;
+      case 2: 
+        // Multiply base by 1.5 for 2 mines
+        return baseMultipliers.map(m => parseFloat((m * 1.5).toFixed(2)));
+      case 3: 
+        // Multiply base by 3 for 3 mines
+        return baseMultipliers.map(m => parseFloat((m * 3).toFixed(2)));
+      default: 
+        return baseMultipliers;
     }
   };
   
@@ -87,21 +92,34 @@ const TowerGame = () => {
     for (let row = 0; row < ROWS; row++) {
       const minePositions: number[] = [];
       
-      // Add mines for each row using different cursor values
+      // For each row, place the specified number of mines
       for (let i = 0; i < minesPerRow; i++) {
-        // Ensure unique positions by checking array
         let position;
-        let attempts = 0;
-        do {
-          const cursorParams = { 
-            ...fairParams, 
-            cursor: row * 10 + i + attempts
-          };
-          position = generateRandomNumber(cursorParams, 0, TILES_PER_ROW - 1);
-          attempts++;
-        } while (minePositions.includes(position) && attempts < 50);
+        let tries = 0;
         
-        minePositions.push(position);
+        // Find a unique position that's not already mined
+        do {
+          // Add randomness to cursor to avoid repetitive patterns
+          const modifiedParams = {
+            ...fairParams,
+            cursor: (row * 100) + (i * 10) + tries + Math.floor(Math.random() * 1000)
+          };
+          
+          position = generateRandomNumber(modifiedParams, 0, TILES_PER_ROW - 1);
+          tries++;
+        } while (minePositions.includes(position) && tries < 50);
+        
+        if (!minePositions.includes(position)) {
+          minePositions.push(position);
+        }
+      }
+      
+      // Ensure we have exactly minesPerRow mines for this row
+      while (minePositions.length < minesPerRow) {
+        let position = Math.floor(Math.random() * TILES_PER_ROW);
+        if (!minePositions.includes(position)) {
+          minePositions.push(position);
+        }
       }
       
       newMines[row] = minePositions;
@@ -128,7 +146,7 @@ const TowerGame = () => {
     setSelectedTile(tile);
     
     // Check if clicked on a mine
-    if (mines[row].includes(tile)) {
+    if (mines[row] && mines[row].includes(tile)) {
       setGameOver(true);
       setGameActive(false);
       setGameResult("lose");
