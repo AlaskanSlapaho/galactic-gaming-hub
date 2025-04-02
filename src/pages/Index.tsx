@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,35 +13,35 @@ const HomePage = () => {
       name: "Mines",
       description: "Find treasures without triggering mines.",
       path: "/games/mines",
-      maxWin: "x10,000",
+      multiplier: "x10,000",
     },
     {
       id: "dice",
       name: "Dice",
       description: "Bet on the outcome of a dice roll.",
       path: "/games/dice",
-      maxWin: "x250",
+      multiplier: "x250",
     },
     {
       id: "tower",
       name: "Tower",
       description: "Climb the tower without hitting a mine.",
       path: "/games/tower",
-      maxWin: "x16",
+      multiplier: "x16",
     },
     {
       id: "blackjack",
       name: "Blackjack",
       description: "Beat the dealer without going over 21.",
       path: "/games/blackjack",
-      maxWin: "x2.5",
+      multiplier: "x2.5",
     },
     {
       id: "hilo",
       name: "HiLo",
       description: "Predict if the next card is higher or lower.",
       path: "/games/hilo",
-      maxWin: "x1,000",
+      multiplier: "x1,000",
     },
   ];
 
@@ -103,10 +102,7 @@ const HomePage = () => {
               </div>
               <CardContent className="p-6">
                 <p className="text-zinc-400 mb-4">{game.description}</p>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-zinc-300">
-                    Max Win: <span className="text-green-500">{game.maxWin}</span>
-                  </span>
+                <div className="flex justify-end items-center">
                   <Button asChild className="bg-purple-600 hover:bg-purple-700">
                     <Link to={game.path}>Play Now</Link>
                   </Button>

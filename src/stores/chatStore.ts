@@ -13,6 +13,7 @@ interface ChatStore {
   messages: ChatMessage[];
   addMessage: (message: ChatMessage) => void;
   addSystemMessage: (content: string) => void;
+  removeLastMessage: () => void;
 }
 
 export const useChatStore = create<ChatStore>((set) => ({
@@ -33,5 +34,11 @@ export const useChatStore = create<ChatStore>((set) => ({
           isSystem: true,
         }
       ].slice(-100) // Keep only the last 100 messages
+    })),
+  removeLastMessage: () =>
+    set((state) => ({
+      messages: state.messages.length > 0 
+        ? state.messages.slice(0, -1) 
+        : []
     })),
 }));

