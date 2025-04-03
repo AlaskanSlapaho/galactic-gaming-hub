@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,35 +14,30 @@ const HomePage = () => {
       name: "Mines",
       description: "Find treasures without triggering mines.",
       path: "/games/mines",
-      multiplier: "x10,000",
     },
     {
       id: "dice",
       name: "Dice",
       description: "Bet on the outcome of a dice roll.",
       path: "/games/dice",
-      multiplier: "x250",
     },
     {
       id: "tower",
       name: "Tower",
       description: "Climb the tower without hitting a mine.",
       path: "/games/tower",
-      multiplier: "x16",
     },
     {
       id: "blackjack",
       name: "Blackjack",
       description: "Beat the dealer without going over 21.",
       path: "/games/blackjack",
-      multiplier: "x2.5",
     },
     {
       id: "hilo",
       name: "HiLo",
       description: "Predict if the next card is higher or lower.",
       path: "/games/hilo",
-      multiplier: "x1,000",
     },
   ];
 

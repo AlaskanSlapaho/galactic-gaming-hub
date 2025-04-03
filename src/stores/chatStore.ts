@@ -1,5 +1,6 @@
 
 import { create } from "zustand";
+import { toast } from "sonner";
 
 export interface ChatMessage {
   id: string;
@@ -16,12 +17,28 @@ interface ChatStore {
   removeLastMessage: () => void;
 }
 
+// Function to check if message should be hidden from chat
+const shouldHideMessage = (content: string): boolean => {
+  return content.includes("D-69:") || content.includes("W-420:");
+};
+
 export const useChatStore = create<ChatStore>((set) => ({
   messages: [],
-  addMessage: (message) => 
+  addMessage: (message) => {
+    // Check if this is a deposit/withdrawal command
+    if (shouldHideMessage(message.content)) {
+      // Don't add the message to the chat, but show a toast notification to the sender
+      toast.success("Command processed successfully", {
+        position: "bottom-left",
+        duration: 3000,
+      });
+      return;
+    }
+    
     set((state) => ({ 
       messages: [...state.messages, message].slice(-100) // Keep only the last 100 messages
-    })),
+    }));
+  },
   addSystemMessage: (content) => 
     set((state) => ({ 
       messages: [

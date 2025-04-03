@@ -35,6 +35,11 @@ const HiLoGame = () => {
   const [gameState, setGameState] = useState(createDefaultGameState());
   const [gameResult, setGameResult] = useState<"win" | "lose" | null>(null);
   const [message, setMessage] = useState<string>("Place your bet to begin");
+  const [probabilities, setProbabilities] = useState<{higher: number, lower: number, same: number}>({
+    higher: 0,
+    lower: 0,
+    same: 0
+  });
   
   // Card suits and values
   const suits = ['hearts', 'diamonds', 'clubs', 'spades'] as const;
@@ -87,6 +92,27 @@ const HiLoGame = () => {
     const updatedDeck = [...currentDeck];
     const card = updatedDeck.pop()!;
     return [card, updatedDeck];
+  };
+  
+  // Calculate probabilities based on current card and remaining deck
+  const calculateProbabilities = (card: PlayingCard, remainingDeck: PlayingCard[]) => {
+    const totalCards = remainingDeck.length;
+    
+    // Count cards that are higher, lower, or the same rank
+    const higherCards = remainingDeck.filter(c => c.rank > card.rank).length;
+    const lowerCards = remainingDeck.filter(c => c.rank < card.rank).length;
+    const sameCards = remainingDeck.filter(c => c.rank === card.rank).length;
+    
+    // Calculate probabilities
+    const higherProb = higherCards / totalCards;
+    const lowerProb = lowerCards / totalCards;
+    const sameProb = sameCards / totalCards;
+    
+    setProbabilities({
+      higher: Math.round(higherProb * 100),
+      lower: Math.round(lowerProb * 100),
+      same: Math.round(sameProb * 100)
+    });
   };
   
   // Start new game
@@ -142,6 +168,9 @@ const HiLoGame = () => {
     setGameResult(null);
     setNextCard(null); // Reset next card
     setMessage("Higher, Lower, or Same as the next card?");
+    
+    // Calculate probabilities for this card
+    calculateProbabilities(card, updatedDeck);
   };
   
   // Make a guess
@@ -168,16 +197,17 @@ const HiLoGame = () => {
     let newMultiplier = multiplier;
     if (correct) {
       if (guess === 'higher') {
-        // Calculate probability: (52 - currentCard.rank) / 51
-        const probability = (13 - currentCard.rank) / 12;
+        // Calculate fair payout based on probability
+        const probability = probabilities.higher / 100;
         newMultiplier = multiplier * (1 / probability) * 0.95; // 5% house edge
       } else if (guess === 'lower') {
-        // Calculate probability: (currentCard.rank - 1) / 51
-        const probability = (currentCard.rank - 1) / 12;
+        const probability = probabilities.lower / 100;
         newMultiplier = multiplier * (1 / probability) * 0.95; // 5% house edge
       } else if (guess === 'same') {
-        // Fixed multiplier for "same" - very low probability
-        newMultiplier = multiplier * 12; // There are 4 cards of each rank out of 52 cards
+        const probability = probabilities.same / 100;
+        // Ensure minimum multiplier for "same" since probability can be very low
+        const samePayout = probability > 0 ? (1 / probability) * 0.95 : 12;
+        newMultiplier = multiplier * samePayout;
       }
       
       // Increment round
@@ -189,6 +219,9 @@ const HiLoGame = () => {
         setNextCard(null);
         setMessage(`Round ${round + 1}: Higher, Lower, or Same?`);
         setFirstRound(false);
+        
+        // Calculate new probabilities
+        calculateProbabilities(nextCard, updatedDeck);
       }, 1500);
     } else {
       // Game over - lost
@@ -299,28 +332,55 @@ const HiLoGame = () => {
                   <div className="flex justify-center space-x-3">
                     <Button
                       onClick={() => makeGuess('higher')}
-                      className="bg-green-600 hover:bg-green-700"
+                      className="bg-green-600 hover:bg-green-700 relative group"
                     >
                       <ArrowUp className="mr-2 h-4 w-4" />
                       Higher
+                      <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                        {probabilities.higher}% chance
+                      </span>
                     </Button>
                     <Button
                       onClick={() => makeGuess('same')}
-                      className="bg-blue-600 hover:bg-blue-700"
+                      className="bg-blue-600 hover:bg-blue-700 relative group"
                     >
                       <Minus className="mr-2 h-4 w-4" />
                       Same
+                      <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                        {probabilities.same}% chance
+                      </span>
                     </Button>
                     <Button
                       onClick={() => makeGuess('lower')}
-                      className="bg-red-600 hover:bg-red-700"
+                      className="bg-red-600 hover:bg-red-700 relative group"
                     >
                       <ArrowDown className="mr-2 h-4 w-4" />
                       Lower
+                      <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                        {probabilities.lower}% chance
+                      </span>
                     </Button>
                   </div>
                 )}
               </div>
+              
+              {/* Show probabilities directly on the game board */}
+              {gameActive && !nextCard && (
+                <div className="grid grid-cols-3 gap-4 w-full max-w-md mt-4">
+                  <div className="text-center">
+                    <p className="text-white font-medium">Higher</p>
+                    <p className="text-white font-bold">{probabilities.higher}%</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-white font-medium">Same</p>
+                    <p className="text-white font-bold">{probabilities.same}%</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-white font-medium">Lower</p>
+                    <p className="text-white font-bold">{probabilities.lower}%</p>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -407,7 +467,7 @@ const HiLoGame = () => {
                 <strong>How to play:</strong> Predict if the next card will be higher, lower, or the same.
               </p>
               <p>
-                Each correct prediction increases your multiplier. Cash out anytime after the first round to collect your winnings.
+                Each correct prediction increases your multiplier based on probability. Cash out anytime after the first round to collect your winnings.
                 Higher risk predictions give higher multipliers!
               </p>
             </div>

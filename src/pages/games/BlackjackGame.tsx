@@ -32,13 +32,18 @@ const BlackjackGame = () => {
   const [gameState, setGameState] = useState<GameState>('betting');
   const [fairState, setFairState] = useState(createDefaultGameState());
   const [deck, setDeck] = useState<PlayingCard[]>([]);
-  const [playerHand, setPlayerHand] = useState<PlayingCard[]>([]);
+  const [playerHands, setPlayerHands] = useState<PlayingCard[][]>([]);
+  const [currentHandIndex, setCurrentHandIndex] = useState<number>(0);
   const [dealerHand, setDealerHand] = useState<PlayingCard[]>([]);
-  const [playerScore, setPlayerScore] = useState<number>(0);
+  const [playerScores, setPlayerScores] = useState<number[]>([]);
   const [dealerScore, setDealerScore] = useState<number>(0);
   const [gameResult, setGameResult] = useState<"win" | "lose" | "push" | null>(null);
   const [message, setMessage] = useState<string>("Place your bet to begin");
-  
+  const [canDoubleDown, setCanDoubleDown] = useState<boolean>(false);
+  const [canSplit, setCanSplit] = useState<boolean>(false);
+  const [doubledHands, setDoubledHands] = useState<boolean[]>([]);
+  const [handResults, setHandResults] = useState<("win" | "lose" | "push")[]>([]);
+
   // Card suits and values
   const suits = ['hearts', 'diamonds', 'clubs', 'spades'] as const;
   const values = [
@@ -120,6 +125,30 @@ const BlackjackGame = () => {
     return hand.length === 2 && calculateScore(hand) === 21;
   };
   
+  // Check if hand can be split (first two cards have same face value)
+  const checkCanSplit = (hand: PlayingCard[]): boolean => {
+    if (hand.length === 2) {
+      return hand[0].face === hand[1].face;
+    }
+    return false;
+  };
+  
+  // Check if player can double down (first two cards only, total 9, 10, or 11)
+  const checkCanDoubleDown = (hand: PlayingCard[]): boolean => {
+    if (hand.length === 2) {
+      const score = calculateScore(hand);
+      return score >= 9 && score <= 11;
+    }
+    return false;
+  };
+  
+  // Update scores for all hands
+  const updateScores = () => {
+    const newPlayerScores = playerHands.map(hand => calculateScore(hand));
+    setPlayerScores(newPlayerScores);
+    setDealerScore(calculateScore(dealerHand));
+  };
+  
   // Start a new game
   const startNewGame = () => {
     if (!isAuthenticated) {
@@ -171,21 +200,31 @@ const BlackjackGame = () => {
     const newPlayerHand = [playerCard1, playerCard2];
     const newDealerHand = [dealerCard1, dealerCard2];
     
-    setPlayerHand(newPlayerHand);
+    // Initialize a single player hand
+    setPlayerHands([newPlayerHand]);
     setDealerHand(newDealerHand);
     setDeck(deck4);
+    setCurrentHandIndex(0);
     
     // Calculate initial scores
     const pScore = calculateScore(newPlayerHand);
     const dScore = calculateScore(newDealerHand);
     
-    setPlayerScore(pScore);
+    setPlayerScores([pScore]);
     setDealerScore(dScore);
+    
+    // Check if player can split or double down
+    setCanSplit(checkCanSplit(newPlayerHand));
+    setCanDoubleDown(checkCanDoubleDown(newPlayerHand));
+    
+    // Initialize doubled hands tracking
+    setDoubledHands([false]);
+    setHandResults([]);
     
     setGameActive(true);
     setGameState('playing');
     setGameResult(null);
-    setMessage("Your turn: Hit or Stand?");
+    setMessage("Your turn: Hit, Stand, Double Down, or Split?");
     
     // Check for blackjacks
     if (isBlackjack(newPlayerHand) && isBlackjack(newDealerHand)) {
@@ -201,18 +240,41 @@ const BlackjackGame = () => {
   const handleHit = () => {
     if (gameState !== 'playing') return;
     
+    const currentHand = playerHands[currentHandIndex];
     const [newCard, updatedDeck] = drawCard(deck);
-    const updatedHand = [...playerHand, newCard];
+    const updatedHand = [...currentHand, newCard];
     
-    setPlayerHand(updatedHand);
+    // Update the current hand in playerHands
+    const updatedHands = [...playerHands];
+    updatedHands[currentHandIndex] = updatedHand;
+    
+    setPlayerHands(updatedHands);
     setDeck(updatedDeck);
     
+    // Update scores
     const newScore = calculateScore(updatedHand);
-    setPlayerScore(newScore);
+    const newScores = [...playerScores];
+    newScores[currentHandIndex] = newScore;
+    setPlayerScores(newScores);
+    
+    // Can't double down or split after hitting
+    setCanDoubleDown(false);
+    setCanSplit(false);
     
     if (newScore > 21) {
-      endGame('lose', "Bust! You went over 21.");
+      // Current hand busts
+      const newResults = [...handResults];
+      newResults[currentHandIndex] = 'lose';
+      setHandResults(newResults);
+      
+      // Move to the next hand or dealer's turn
+      if (currentHandIndex < playerHands.length - 1) {
+        moveToNextHand();
+      } else {
+        finishPlayerTurn();
+      }
     } else if (newScore === 21) {
+      // Automatically stand on 21
       handleStand();
     }
   };
@@ -220,15 +282,203 @@ const BlackjackGame = () => {
   const handleStand = () => {
     if (gameState !== 'playing') return;
     
-    setGameState('dealer-turn');
-    setMessage("Dealer's turn...");
+    // Can't double down or split after standing
+    setCanDoubleDown(false);
+    setCanSplit(false);
     
+    // Move to the next hand or dealer's turn
+    if (currentHandIndex < playerHands.length - 1) {
+      moveToNextHand();
+    } else {
+      finishPlayerTurn();
+    }
+  };
+  
+  const handleDoubleDown = () => {
+    if (gameState !== 'playing' || !canDoubleDown) return;
+    
+    const betValue = parseFloat(betAmount);
+    
+    // Check if player has enough balance to double down
+    if (betValue > (user?.balance || 0)) {
+      toast({
+        variant: "destructive",
+        title: "Insufficient funds",
+        description: "You don't have enough credits to double down",
+      });
+      return;
+    }
+    
+    // Deduct additional bet amount
+    updateBalance((user?.balance || 0) - betValue);
+    
+    // Mark this hand as doubled
+    const newDoubledHands = [...doubledHands];
+    newDoubledHands[currentHandIndex] = true;
+    setDoubledHands(newDoubledHands);
+    
+    // Draw one more card and then stand
+    const currentHand = playerHands[currentHandIndex];
+    const [newCard, updatedDeck] = drawCard(deck);
+    const updatedHand = [...currentHand, newCard];
+    
+    // Update the current hand in playerHands
+    const updatedHands = [...playerHands];
+    updatedHands[currentHandIndex] = updatedHand;
+    
+    setPlayerHands(updatedHands);
+    setDeck(updatedDeck);
+    
+    // Update scores
+    const newScore = calculateScore(updatedHand);
+    const newScores = [...playerScores];
+    newScores[currentHandIndex] = newScore;
+    setPlayerScores(newScores);
+    
+    // Check if hand busts
+    if (newScore > 21) {
+      // Current hand busts
+      const newResults = [...handResults];
+      newResults[currentHandIndex] = 'lose';
+      setHandResults(newResults);
+    }
+    
+    // Move to the next hand or dealer's turn after doubling
+    if (currentHandIndex < playerHands.length - 1) {
+      moveToNextHand();
+    } else {
+      finishPlayerTurn();
+    }
+  };
+  
+  const handleSplit = () => {
+    if (gameState !== 'playing' || !canSplit) return;
+    
+    const betValue = parseFloat(betAmount);
+    
+    // Check if player has enough balance for the additional bet
+    if (betValue > (user?.balance || 0)) {
+      toast({
+        variant: "destructive",
+        title: "Insufficient funds",
+        description: "You don't have enough credits to split",
+      });
+      return;
+    }
+    
+    // Deduct additional bet amount
+    updateBalance((user?.balance || 0) - betValue);
+    
+    const currentHand = playerHands[currentHandIndex];
+    
+    // Create two new hands, each with one of the original cards
+    const firstHand = [currentHand[0]];
+    const secondHand = [currentHand[1]];
+    
+    // Draw one card for each new hand
+    const [firstNewCard, deck1] = drawCard(deck);
+    const [secondNewCard, deck2] = drawCard(deck1);
+    
+    firstHand.push(firstNewCard);
+    secondHand.push(secondNewCard);
+    
+    // Create updated player hands array
+    const handsBeforeCurrent = playerHands.slice(0, currentHandIndex);
+    const handsAfterCurrent = playerHands.slice(currentHandIndex + 1);
+    const updatedHands = [...handsBeforeCurrent, firstHand, secondHand, ...handsAfterCurrent];
+    
+    // Update doubled hands tracking
+    const doubledBeforeCurrent = doubledHands.slice(0, currentHandIndex);
+    const doubledAfterCurrent = doubledHands.slice(currentHandIndex + 1);
+    const updatedDoubledHands = [...doubledBeforeCurrent, false, false, ...doubledAfterCurrent];
+    
+    // Update hands and deck
+    setPlayerHands(updatedHands);
+    setDeck(deck2);
+    setDoubledHands(updatedDoubledHands);
+    
+    // Update scores
+    const firstScore = calculateScore(firstHand);
+    const secondScore = calculateScore(secondHand);
+    
+    const scoresBeforeCurrent = playerScores.slice(0, currentHandIndex);
+    const scoresAfterCurrent = playerScores.slice(currentHandIndex + 1);
+    const updatedScores = [...scoresBeforeCurrent, firstScore, secondScore, ...scoresAfterCurrent];
+    
+    setPlayerScores(updatedScores);
+    
+    // Reset split and double down options for the current hand
+    setCanSplit(checkCanSplit(firstHand));
+    setCanDoubleDown(checkCanDoubleDown(firstHand));
+    
+    // Update message
+    setMessage(`Split successful! Playing hand ${currentHandIndex + 1} of ${updatedHands.length}`);
+    
+    // Check for blackjacks after split
+    if (isBlackjack(firstHand)) {
+      toast({
+        title: "Blackjack!",
+        description: `You got a blackjack on your first split hand!`,
+      });
+    }
+    
+    if (isBlackjack(secondHand)) {
+      toast({
+        title: "Blackjack!",
+        description: `You got a blackjack on your second split hand!`,
+      });
+    }
+  };
+  
+  // Move to the next hand after current hand is done
+  const moveToNextHand = () => {
+    const nextHandIndex = currentHandIndex + 1;
+    setCurrentHandIndex(nextHandIndex);
+    
+    // Check if player can split or double down on the next hand
+    const nextHand = playerHands[nextHandIndex];
+    setCanSplit(checkCanSplit(nextHand));
+    setCanDoubleDown(checkCanDoubleDown(nextHand));
+    
+    setMessage(`Playing hand ${nextHandIndex + 1} of ${playerHands.length}`);
+  };
+  
+  // All player hands are done, move to dealer's turn
+  const finishPlayerTurn = () => {
+    // Check if all player hands have busted
+    const allBusted = playerScores.every(score => score > 21);
+    
+    if (allBusted) {
+      // All hands busted, game over
+      setGameState('game-over');
+      setGameActive(false);
+      setMessage("All hands busted! Dealer wins.");
+      
+      // Set all hands as lost
+      setHandResults(playerHands.map(() => 'lose'));
+      
+      toast({
+        variant: "destructive",
+        title: "You Lost",
+        description: `All hands busted. You lost all bets.`,
+      });
+    } else {
+      // Move to dealer's turn
+      setGameState('dealer-turn');
+      setMessage("Dealer's turn...");
+      
+      // Dealer plays their hand
+      dealerPlay();
+    }
+  };
+  
+  // Dealer draws until they have at least 17
+  const dealerPlay = () => {
     let currentDealerHand = [...dealerHand];
     let currentDeck = [...deck];
     let currentDealerScore = calculateScore(currentDealerHand);
     
-    // Dealer draws until they have at least 17
-    const dealerPlay = () => {
+    const dealerDraw = () => {
       if (currentDealerScore < 17) {
         const [newCard, updatedDeck] = drawCard(currentDeck);
         currentDealerHand = [...currentDealerHand, newCard];
@@ -240,56 +490,123 @@ const BlackjackGame = () => {
         setDeck(currentDeck);
         setDealerScore(currentDealerScore);
         
-        setTimeout(dealerPlay, 500);
+        setTimeout(dealerDraw, 500);
       } else {
-        // Dealer is done drawing, determine winner
-        if (currentDealerScore > 21) {
-          endGame('win', "Dealer busts! You win!");
-        } else if (currentDealerScore > playerScore) {
-          endGame('lose', "Dealer wins!");
-        } else if (currentDealerScore < playerScore) {
-          endGame('win', "You win!");
-        } else {
-          endGame('push', "It's a push!");
-        }
+        // Dealer is done drawing, determine winners for each hand
+        determineResults(currentDealerScore);
       }
     };
     
-    setTimeout(dealerPlay, 500);
+    setTimeout(dealerDraw, 500);
   };
   
-  // End game and distribute winnings
-  const endGame = (result: "win" | "lose" | "push", resultMessage: string) => {
+  // Determine results for each hand
+  const determineResults = (finalDealerScore) => {
+    const results: ("win" | "lose" | "push")[] = [];
+    let totalWin = 0;
+    let totalBet = parseFloat(betAmount) * playerHands.length;
+    const betValue = parseFloat(betAmount);
+    
+    playerHands.forEach((hand, index) => {
+      const handScore = playerScores[index];
+      const isDoubled = doubledHands[index];
+      const handBet = isDoubled ? betValue * 2 : betValue;
+      
+      let result: "win" | "lose" | "push";
+      
+      // If player busted, they lose
+      if (handScore > 21) {
+        result = 'lose';
+      }
+      // If dealer busted and player didn't, player wins
+      else if (finalDealerScore > 21) {
+        result = 'win';
+        const winAmount = isBlackjack(hand) ? handBet * 1.5 : handBet;
+        totalWin += winAmount;
+      }
+      // Compare scores
+      else if (handScore > finalDealerScore) {
+        result = 'win';
+        const winAmount = isBlackjack(hand) ? handBet * 1.5 : handBet;
+        totalWin += winAmount;
+      }
+      else if (handScore < finalDealerScore) {
+        result = 'lose';
+      }
+      else {
+        // Push - same score
+        result = 'push';
+        totalWin += handBet; // Return original bet
+      }
+      
+      results.push(result);
+    });
+    
+    setHandResults(results);
+    
+    // Calculate final message and overall result
+    let finalMessage = "";
+    let overallResult: "win" | "lose" | "push" | null = null;
+    
+    const wins = results.filter(r => r === 'win').length;
+    const losses = results.filter(r => r === 'lose').length;
+    const pushes = results.filter(r => r === 'push').length;
+    
+    if (wins > 0 && losses === 0) {
+      overallResult = 'win';
+      finalMessage = pushes > 0 
+        ? `You won ${wins} hand${wins > 1 ? 's' : ''} and pushed ${pushes}!` 
+        : `You won all ${wins} hand${wins > 1 ? 's' : ''}!`;
+    } else if (losses > 0 && wins === 0) {
+      overallResult = 'lose';
+      finalMessage = pushes > 0 
+        ? `You lost ${losses} hand${losses > 1 ? 's' : ''} and pushed ${pushes}.` 
+        : `You lost all ${losses} hand${losses > 1 ? 's' : ''}.`;
+    } else if (wins > 0 && losses > 0) {
+      if (totalWin > totalBet) {
+        overallResult = 'win';
+        finalMessage = `Mixed results: ${wins} win${wins > 1 ? 's' : ''}, ${losses} loss${losses > 1 ? 'es' : ''}, ${pushes} push${pushes > 1 ? 'es' : ''}.`;
+      } else if (totalWin < totalBet) {
+        overallResult = 'lose';
+        finalMessage = `Mixed results: ${wins} win${wins > 1 ? 's' : ''}, ${losses} loss${losses > 1 ? 'es' : ''}, ${pushes} push${pushes > 1 ? 'es' : ''}.`;
+      } else {
+        overallResult = 'push';
+        finalMessage = `Mixed results: ${wins} win${wins > 1 ? 's' : ''}, ${losses} loss${losses > 1 ? 'es' : ''}, ${pushes} push${pushes > 1 ? 'es' : ''}.`;
+      }
+    } else if (pushes === results.length) {
+      overallResult = 'push';
+      finalMessage = `All ${pushes} hand${pushes > 1 ? 's' : ''} pushed.`;
+    }
+    
+    // Update balance with winnings
+    updateBalance((user?.balance || 0) + totalWin);
+    
+    // End the game
+    endGame(overallResult, finalMessage);
+  };
+  
+  // End game and display results
+  const endGame = (result: "win" | "lose" | "push" | null, resultMessage: string) => {
     setGameActive(false);
     setGameState('game-over');
     setGameResult(result);
     setMessage(resultMessage);
     
-    const betValue = parseFloat(betAmount) || 0;
-    
     if (result === 'win') {
-      const winMultiplier = isBlackjack(playerHand) ? 2.5 : 2.0; // 3:2 payout for blackjack
-      const winAmount = betValue * winMultiplier;
-      
-      updateBalance((user?.balance || 0) + winAmount);
-      
       toast({
         title: "You Won!",
-        description: `You won ${winAmount.toFixed(2)} credits!`,
+        description: resultMessage,
       });
     } else if (result === 'push') {
-      // Return the original bet
-      updateBalance((user?.balance || 0) + betValue);
-      
       toast({
         title: "Push!",
-        description: "Your bet has been returned.",
+        description: resultMessage,
       });
-    } else {
+    } else if (result === 'lose') {
       toast({
         variant: "destructive",
         title: "You Lost",
-        description: `You lost ${betValue} credits.`,
+        description: resultMessage,
       });
     }
   };
@@ -369,15 +686,33 @@ const BlackjackGame = () => {
           </div>
         </div>
         
-        <div className="space-y-2">
-          <p className="text-center text-zinc-400">Your Hand ({playerScore})</p>
-          <div className="flex justify-center space-x-2 flex-wrap">
-            {playerHand.map((card, index) => (
-              <div key={index} className="animate-fade-in mb-2">
-                {renderCard(card)}
+        <div className="space-y-4">
+          {playerHands.map((hand, handIndex) => (
+            <div key={handIndex} className={`space-y-2 p-2 ${
+              handIndex === currentHandIndex && gameState === 'playing' 
+                ? "border border-purple-500 rounded-md"
+                : ""
+            }`}>
+              <p className="text-center text-zinc-400">
+                Hand {handIndex + 1} ({playerScores[handIndex] || 0})
+                {doubledHands[handIndex] && " (Doubled)"}
+                {handResults[handIndex] && ` - ${
+                  handResults[handIndex] === 'win' 
+                    ? "Win!" 
+                    : handResults[handIndex] === 'lose' 
+                    ? "Lose" 
+                    : "Push"
+                }`}
+              </p>
+              <div className="flex justify-center space-x-2 flex-wrap">
+                {hand.map((card, cardIndex) => (
+                  <div key={cardIndex} className="animate-fade-in mb-2">
+                    {renderCard(card)}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -424,7 +759,7 @@ const BlackjackGame = () => {
               </div>
               
               <div className="space-y-1">
-                <p className="text-sm text-zinc-400">Potential Win</p>
+                <p className="text-sm text-zinc-400">Standard Payout</p>
                 <p className="text-xl font-medium">
                   {(parseFloat(betAmount) * 2).toFixed(2)} Credits
                 </p>
@@ -450,7 +785,7 @@ const BlackjackGame = () => {
                 </Button>
               )}
               
-              {gameState === 'playing' && (
+              {gameState === 'playing' && currentHandIndex < playerHands.length && (
                 <div className="grid grid-cols-2 gap-2">
                   <Button 
                     onClick={handleHit}
@@ -464,6 +799,24 @@ const BlackjackGame = () => {
                   >
                     Stand
                   </Button>
+                  
+                  {canDoubleDown && (
+                    <Button 
+                      onClick={handleDoubleDown}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      Double Down
+                    </Button>
+                  )}
+                  
+                  {canSplit && (
+                    <Button 
+                      onClick={handleSplit}
+                      className="bg-yellow-600 hover:bg-yellow-700"
+                    >
+                      Split
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -477,11 +830,7 @@ const BlackjackGame = () => {
                   : "bg-blue-500/20 text-blue-500"
               }`}>
                 <p className="text-center font-medium">
-                  {gameResult === "win"
-                    ? `You won ${(parseFloat(betAmount) * (isBlackjack(playerHand) ? 2.5 : 2)).toFixed(2)} credits!`
-                    : gameResult === "lose"
-                    ? `You lost ${betAmount} credits.`
-                    : "Push! Your bet was returned."}
+                  {message}
                 </p>
               </div>
             )}
@@ -496,6 +845,12 @@ const BlackjackGame = () => {
             <div>
               <p className="mb-2">
                 <strong>How to play:</strong> Get a hand value closer to 21 than the dealer without going over.
+              </p>
+              <p className="mb-2">
+                <strong>Double Down:</strong> Double your bet and receive exactly one more card.
+              </p>
+              <p>
+                <strong>Split:</strong> Split a pair into two separate hands, each with its own bet.
               </p>
               <p>
                 Blackjack pays 3:2. Dealer stands on all 17s.

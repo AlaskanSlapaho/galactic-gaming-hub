@@ -13,6 +13,7 @@ import DiceGame from "./pages/games/DiceGame";
 import TowerGame from "./pages/games/TowerGame";
 import BlackjackGame from "./pages/games/BlackjackGame";
 import HiLoGame from "./pages/games/HiLoGame";
+import RouletteGame from "./pages/games/RouletteGame";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import HistoryPage from "./pages/HistoryPage";
 import AdminPanel from "./pages/AdminPanel";
@@ -34,6 +35,7 @@ const App = () => (
               <Route path="/games/tower" element={<TowerGame />} />
               <Route path="/games/blackjack" element={<BlackjackGame />} />
               <Route path="/games/hilo" element={<HiLoGame />} />
+              <Route path="/games/roulette" element={<RouletteGame />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/admin" element={<AdminPanel />} />
