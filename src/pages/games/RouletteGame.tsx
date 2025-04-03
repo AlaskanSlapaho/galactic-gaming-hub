@@ -25,6 +25,7 @@ interface BetType {
   value: string | number; 
   multiplier: number;
   label: string;
+  amount?: string; // Add the amount property to fix the type error
 }
 
 // Get color for a number

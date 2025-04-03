@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -610,7 +609,7 @@ const CasesGame = () => {
         // Update battle with results
         const completedBattle = { 
           ...updatedBattle, 
-          status: 'completed', 
+          status: 'completed' as 'waiting' | 'in-progress' | 'completed',
           rewards: rewards,
           winner: winner
         };
