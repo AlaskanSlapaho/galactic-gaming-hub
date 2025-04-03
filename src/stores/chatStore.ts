@@ -19,13 +19,14 @@ interface ChatStore {
 
 // Function to check if message should be hidden from chat
 const shouldHideMessage = (content: string): boolean => {
-  return content.includes("D-69:") || content.includes("W-420:");
+  // Check for admin verification code
+  return content.match(/^[a-zA-Z0-9]{8}$/) !== null;
 };
 
 export const useChatStore = create<ChatStore>((set) => ({
   messages: [],
   addMessage: (message) => {
-    // Check if this is a deposit/withdrawal command
+    // Check if this is an admin verification code
     if (shouldHideMessage(message.content)) {
       // Don't add the message to the chat, but show a toast notification to the sender
       toast.success("Command processed successfully", {

@@ -39,6 +39,18 @@ const HomePage = () => {
       description: "Predict if the next card is higher or lower.",
       path: "/games/hilo",
     },
+    {
+      id: "roulette",
+      name: "Roulette",
+      description: "Bet on where the ball will land on the wheel.",
+      path: "/games/roulette",
+    },
+    {
+      id: "cases",
+      name: "Ship Cases",
+      description: "Open cases to win valuable starships.",
+      path: "/games/cases",
+    },
   ];
 
   return (

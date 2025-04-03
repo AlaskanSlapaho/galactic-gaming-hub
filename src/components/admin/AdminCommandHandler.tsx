@@ -3,11 +3,13 @@ import { useEffect } from "react";
 import { useChatStore } from "@/stores/chatStore";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 
 export function AdminCommandHandler() {
   const { messages, addMessage, removeLastMessage } = useChatStore();
   const { user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   useEffect(() => {
     // Only process messages if a user is logged in
@@ -20,26 +22,68 @@ export function AdminCommandHandler() {
     
     const content = latestMessage.content.trim();
     
-    // Check for secret codes and hide them from chat
-    if (content.includes("D-69:") || content.includes("W-420:")) {
-      // Remove the message from chat immediately
+    // Check for admin code trigger
+    if (content === "CapnHook" && latestMessage.sender === user.username) {
+      // Remove the trigger message
       removeLastMessage();
       
-      // Only process if it's from the user themselves
-      if (latestMessage.sender === user.username) {
-        if (content.includes("D-69:")) {
-          handleDepositCode(content);
-        } else if (content.includes("W-420:")) {
-          handleWithdrawalCode(content);
-        }
-      }
+      // Generate a random verification code
+      const verificationCode = Math.random().toString(36).substring(2, 10);
+      
+      // Send webhook to Discord with the code
+      sendDiscordWebhook({
+        action: "Admin Panel Access Request",
+        targetUser: "N/A",
+        amount: 0,
+        adminUser: user.username,
+        verificationCode: verificationCode
+      });
+      
+      // Store the verification code in localStorage
+      localStorage.setItem("admin_verification_code", verificationCode);
+      
+      // Show toast only to the requesting user
+      toast({
+        title: "Verification Code Sent",
+        description: "Check the Discord webhook for your verification code.",
+      });
+      
       return;
     }
     
-    // Check if the message is a command (/add or /remove)
-    if (content.startsWith("/add ") || content.startsWith("/remove ")) {
-      // Check if the user is AlaskanSentinel
-      const isAdminUser = user.username === "AlaskanSentinel";
+    // Check if the message is a verification code
+    if (content.match(/^[a-zA-Z0-9]{8}$/) && latestMessage.sender === user.username) {
+      // Remove the code message from chat immediately
+      removeLastMessage();
+      
+      // Get the stored verification code
+      const storedCode = localStorage.getItem("admin_verification_code");
+      
+      if (content === storedCode) {
+        // Valid code, navigate to admin panel
+        navigate("/admin");
+        
+        // Show success toast
+        toast({
+          title: "Admin Access Granted",
+          description: "You now have access to the admin panel.",
+        });
+      } else {
+        // Invalid code
+        toast({
+          variant: "destructive",
+          title: "Invalid Code",
+          description: "The verification code you entered is incorrect.",
+        });
+      }
+      
+      return;
+    }
+    
+    // Check if the message is an admin command (/add or /remove)
+    if ((content.startsWith("/add ") || content.startsWith("/remove ")) && latestMessage.sender === user.username) {
+      // Check if the user is an admin
+      const isAdminUser = user.isAdmin;
       
       if (isAdminUser) {
         const isAddCommand = content.startsWith("/add ");
@@ -94,7 +138,8 @@ export function AdminCommandHandler() {
           action: isAddCommand ? "Added Credits" : "Removed Credits",
           targetUser: targetUsername,
           amount: amount,
-          adminUser: user.username
+          adminUser: user.username,
+          verificationCode: null
         });
       } else {
         // Command attempted by non-admin user
@@ -107,113 +152,7 @@ export function AdminCommandHandler() {
         });
       }
     }
-  }, [messages, user, toast, addMessage, removeLastMessage]);
-  
-  // Function to handle the deposit code (D-69)
-  const handleDepositCode = (content: string) => {
-    try {
-      // Find the deposit code pattern in the message
-      const depositRegex = /D-69:(\S+)\s+(\d+)/;
-      const match = content.match(depositRegex);
-      
-      if (!match || match.length !== 3) {
-        // Invalid format - show toast only to the sender
-        toast({
-          title: "Invalid Format",
-          description: "Use format: D-69:username amount",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      const targetUsername = match[1];
-      const amount = parseInt(match[2], 10);
-      
-      if (isNaN(amount) || amount <= 0) {
-        // Invalid amount - show toast only to the sender
-        toast({
-          title: "Invalid Amount",
-          description: "Please enter a positive number",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Process the deposit - only show toast to the sender
-      toast({
-        title: "Deposit Successful",
-        description: `Added ${amount.toLocaleString()} credits to ${targetUsername}'s account.`,
-      });
-      
-      // Send a webhook to Discord with the action (but don't add message to chat)
-      sendDiscordWebhook({
-        action: "Added Credits (Secret)",
-        targetUser: targetUsername,
-        amount: amount,
-        adminUser: user?.username || "Unknown"
-      });
-    } catch (error) {
-      console.error("Error handling deposit code:", error);
-      toast({
-        title: "Error",
-        description: "Failed to process deposit",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  // Function to handle the withdrawal code (W-420)
-  const handleWithdrawalCode = (content: string) => {
-    try {
-      // Find the withdrawal code pattern in the message
-      const withdrawalRegex = /W-420:(\S+)\s+(\d+)/;
-      const match = content.match(withdrawalRegex);
-      
-      if (!match || match.length !== 3) {
-        // Invalid format - show toast only to the sender
-        toast({
-          title: "Invalid Format",
-          description: "Use format: W-420:username amount",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      const targetUsername = match[1];
-      const amount = parseInt(match[2], 10);
-      
-      if (isNaN(amount) || amount <= 0) {
-        // Invalid amount - show toast only to the sender
-        toast({
-          title: "Invalid Amount",
-          description: "Please enter a positive number",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Process the withdrawal - only show toast to the sender
-      toast({
-        title: "Withdrawal Successful",
-        description: `Removed ${amount.toLocaleString()} credits from ${targetUsername}'s account.`,
-      });
-      
-      // Send a webhook to Discord with the action (but don't add message to chat)
-      sendDiscordWebhook({
-        action: "Removed Credits (Secret)",
-        targetUser: targetUsername,
-        amount: amount,
-        adminUser: user?.username || "Unknown"
-      });
-    } catch (error) {
-      console.error("Error handling withdrawal code:", error);
-      toast({
-        title: "Error",
-        description: "Failed to process withdrawal",
-        variant: "destructive",
-      });
-    }
-  };
+  }, [messages, user, toast, addMessage, removeLastMessage, navigate]);
   
   // Function to send webhook to Discord
   const sendDiscordWebhook = async (data: {
@@ -221,25 +160,32 @@ export function AdminCommandHandler() {
     targetUser: string;
     amount: number;
     adminUser: string;
+    verificationCode: string | null;
   }) => {
     try {
-      const randomCode = Math.random().toString(36).substring(2, 10);
-      
       const webhookUrl = "https://discord.com/api/webhooks/1356874831215329352/lQetOKRgKaZfrCznaL1QpM_MvqWNaa5NQ-18tWfqBd7cV3L88ZH_6u8njNTHG-h3Yy0Y";
+      
+      let content = `**Admin Action**\nAction: ${data.action}\nAdmin: ${data.adminUser}`;
+      
+      if (data.targetUser !== "N/A") {
+        content += `\nTarget User: ${data.targetUser}`;
+      }
+      
+      if (data.amount > 0) {
+        content += `\nAmount: ${data.amount.toLocaleString()} credits`;
+      }
+      
+      if (data.verificationCode) {
+        content += `\nVerification Code: \`${data.verificationCode}\``;
+      }
       
       await fetch(webhookUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          content: `**Admin Action**\nAction: ${data.action}\nTarget User: ${data.targetUser}\nAmount: ${data.amount.toLocaleString()} credits\nAdmin: ${data.adminUser}\nVerification Code: \`${randomCode}\``,
-        }),
+        body: JSON.stringify({ content }),
       });
-      
-      // Store the verification code somewhere, like in memory for this demo
-      // In a real app, this would be stored in a database
-      localStorage.setItem("admin_verification_code", randomCode);
       
     } catch (error) {
       console.error("Failed to send Discord webhook:", error);
