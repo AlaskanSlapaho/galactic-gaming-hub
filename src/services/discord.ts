@@ -69,7 +69,7 @@ class DiscordService {
         username: "DiscordUser",
         discriminator: "0000",
         avatar: "",
-        // No balance for new users
+        // No balance by default - it should be fetched separately
       };
       
       // Cache the user
