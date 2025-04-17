@@ -6,17 +6,99 @@ interface DiscordCredentials {
   clientSecret: string;
 }
 
+interface DiscordUser {
+  id: string;
+  username: string;
+  discriminator: string;
+  avatar: string;
+  balance?: number;
+}
+
 class DiscordService {
   private credentials: DiscordCredentials = {
     clientId: '1357044451410972801',
     clientSecret: 'IsWkgoskTe5jIYMm_XHU-Q3ayanMbuv5'
   };
+  
+  private redirectUri = `${window.location.origin}/auth/callback`;
+  private tokenStorageKey = "discord_access_token";
+  private userStorageKey = "discord_user";
+  
+  // Generate OAuth2 login URL
+  getAuthUrl(): string {
+    const params = new URLSearchParams({
+      client_id: this.credentials.clientId,
+      redirect_uri: this.redirectUri,
+      response_type: 'code',
+      scope: 'identify'
+    });
+    
+    return `https://discord.com/api/oauth2/authorize?${params.toString()}`;
+  }
+  
+  // Exchange code for access token
+  async getToken(code: string): Promise<string | null> {
+    try {
+      // In a real implementation, this would be handled by a backend
+      // For this demo, we'll simulate a successful token exchange
+      const mockToken = `mock_token_${Date.now()}`;
+      localStorage.setItem(this.tokenStorageKey, mockToken);
+      return mockToken;
+    } catch (error) {
+      console.error("Error getting Discord token:", error);
+      return null;
+    }
+  }
+  
+  // Get current user from Discord
+  async getCurrentUser(): Promise<DiscordUser | null> {
+    try {
+      // Check if we have a cached user
+      const cachedUser = localStorage.getItem(this.userStorageKey);
+      if (cachedUser) {
+        return JSON.parse(cachedUser);
+      }
+      
+      // In a real implementation, this would call the Discord API
+      // For this demo, we'll create a mock user
+      const mockUser: DiscordUser = {
+        id: `${Math.floor(Math.random() * 1000000)}`,
+        username: "DiscordUser",
+        discriminator: "0000",
+        avatar: "",
+        balance: 5000
+      };
+      
+      // Cache the user
+      localStorage.setItem(this.userStorageKey, JSON.stringify(mockUser));
+      return mockUser;
+    } catch (error) {
+      console.error("Error getting Discord user:", error);
+      return null;
+    }
+  }
+  
+  // Check if the user is authenticated with Discord
+  isAuthenticated(): boolean {
+    return localStorage.getItem(this.tokenStorageKey) !== null;
+  }
+  
+  // Log out from Discord
+  logout(): void {
+    localStorage.removeItem(this.tokenStorageKey);
+    localStorage.removeItem(this.userStorageKey);
+  }
 
   // Check user's Discord credits
   async checkUserCredits(discordUserId: string): Promise<number | null> {
     try {
       // In a real implementation, this would make an API call to your Discord bot
       // For now, we'll simulate a response
+      
+      const user = await this.getCurrentUser();
+      if (user && user.balance) {
+        return user.balance;
+      }
       
       // Mock response based on Discord user ID
       const mockCredits = parseInt(discordUserId) % 10000 + 1000;
@@ -33,6 +115,13 @@ class DiscordService {
       // In a real implementation, this would make an API call to your Discord bot
       // For now, we'll return true to simulate success
       
+      // Update the cached user balance
+      const user = await this.getCurrentUser();
+      if (user) {
+        user.balance = (user.balance || 0) - amount;
+        localStorage.setItem(this.userStorageKey, JSON.stringify(user));
+      }
+      
       return true;
     } catch (error) {
       console.error("Error depositing credits:", error);
@@ -46,6 +135,13 @@ class DiscordService {
       // In a real implementation, this would make an API call to your Discord bot
       // For now, we'll return true to simulate success
       
+      // Update the cached user balance
+      const user = await this.getCurrentUser();
+      if (user) {
+        user.balance = (user.balance || 0) + amount;
+        localStorage.setItem(this.userStorageKey, JSON.stringify(user));
+      }
+      
       return true;
     } catch (error) {
       console.error("Error withdrawing credits:", error);
@@ -53,33 +149,10 @@ class DiscordService {
     }
   }
   
-  // Link a Discord account to a casino account
-  async linkDiscordAccount(discordUserId: string, casinoUsername: string): Promise<boolean> {
-    try {
-      // Store the link in localStorage
-      const discordLinksKey = "discord_user_links";
-      const existingLinks = JSON.parse(localStorage.getItem(discordLinksKey) || "{}");
-      
-      existingLinks[casinoUsername] = discordUserId;
-      localStorage.setItem(discordLinksKey, JSON.stringify(existingLinks));
-      
-      return true;
-    } catch (error) {
-      console.error("Error linking Discord account:", error);
-      return false;
-    }
-  }
-  
-  // Get linked Discord ID for casino user
-  getLinkedDiscordId(casinoUsername: string): string | null {
-    try {
-      const discordLinksKey = "discord_user_links";
-      const existingLinks = JSON.parse(localStorage.getItem(discordLinksKey) || "{}");
-      
-      return existingLinks[casinoUsername] || null;
-    } catch {
-      return null;
-    }
+  // Get Discord balance
+  async getDiscordBalance(): Promise<number | null> {
+    const user = await this.getCurrentUser();
+    return user?.balance || null;
   }
 }
 

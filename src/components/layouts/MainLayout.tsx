@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +14,6 @@ import ChatBox from "../chat/ChatBox";
 import { AdminCommandHandler } from "../admin/AdminCommandHandler";
 import { toast } from "sonner";
 import { discordService } from "@/services/discord";
-
-type AuthTabs = "login" | "register";
 
 interface NavItemProps {
   to: string;
@@ -45,13 +44,24 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isMobile } = useMobile() as { isMobile: boolean };
   const { user, isAuthenticated, logout, updateBalance } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
-  const [activeAuthTab, setActiveAuthTab] = useState<AuthTabs>("login");
   const [isChatVisible, setIsChatVisible] = useState<boolean>(false);
   const [isDepositModalOpen, setIsDepositModalOpen] = useState<boolean>(false);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState<boolean>(false);
   const [depositAmount, setDepositAmount] = useState<string>("1000");
   const [withdrawAmount, setWithdrawAmount] = useState<string>("1000");
-  const [discordId, setDiscordId] = useState<string>("");
+  const [discordBalance, setDiscordBalance] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Get Discord balance when the component mounts
+    const getBalance = async () => {
+      if (isAuthenticated) {
+        const balance = await discordService.getDiscordBalance();
+        setDiscordBalance(balance);
+      }
+    };
+    
+    getBalance();
+  }, [isAuthenticated]);
 
   const closeSidebar = () => {
     if (isMobile) {
@@ -60,12 +70,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   };
 
   const handleLogin = () => {
-    setActiveAuthTab("login");
-    setIsAuthModalOpen(true);
-  };
-
-  const handleRegister = () => {
-    setActiveAuthTab("register");
     setIsAuthModalOpen(true);
   };
 
@@ -81,31 +85,15 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       return;
     }
 
-    let userDiscordId = discordService.getLinkedDiscordId(user.username);
-    
-    if (!userDiscordId && !discordId) {
-      toast.error("Please enter your Discord user ID to link your account");
-      return;
-    }
-
-    if (discordId && !userDiscordId) {
-      const linked = await discordService.linkDiscordAccount(discordId, user.username);
-      if (!linked) {
-        toast.error("Failed to link Discord account");
-        return;
-      }
-      userDiscordId = discordId;
-    }
-
-    const discordCredits = await discordService.checkUserCredits(userDiscordId || "");
-    if (!discordCredits || discordCredits < amount) {
+    if (amount > (discordBalance || 0)) {
       toast.error("You don't have enough credits on Discord");
       return;
     }
 
-    const success = await discordService.depositCredits(userDiscordId!, amount);
+    const success = await discordService.depositCredits(user.discordId || "", amount);
     if (success) {
       updateBalance((user.balance || 0) + amount);
+      setDiscordBalance((discordBalance || 0) - amount);
       toast.success(`Successfully deposited ${amount} credits`);
       setIsDepositModalOpen(false);
     } else {
@@ -130,25 +118,10 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       return;
     }
 
-    let userDiscordId = discordService.getLinkedDiscordId(user.username);
-    
-    if (!userDiscordId && !discordId) {
-      toast.error("Please enter your Discord user ID to link your account");
-      return;
-    }
-
-    if (discordId && !userDiscordId) {
-      const linked = await discordService.linkDiscordAccount(discordId, user.username);
-      if (!linked) {
-        toast.error("Failed to link Discord account");
-        return;
-      }
-      userDiscordId = discordId;
-    }
-
-    const success = await discordService.withdrawCredits(userDiscordId!, amount);
+    const success = await discordService.withdrawCredits(user.discordId || "", amount);
     if (success) {
       updateBalance((user.balance || 0) - amount);
+      setDiscordBalance((discordBalance || 0) + amount);
       toast.success(`Successfully withdrew ${amount} credits to Discord`);
       setIsWithdrawModalOpen(false);
     } else {
@@ -158,6 +131,12 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const toggleChat = () => {
     setIsChatVisible(!isChatVisible);
+  };
+
+  const refreshDiscordBalance = async () => {
+    const balance = await discordService.getDiscordBalance();
+    setDiscordBalance(balance);
+    toast.success("Discord balance refreshed");
   };
 
   return (
@@ -216,20 +195,13 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <div className="flex space-x-2">
                 <Button
                   size="sm"
-                  variant="outline"
                   onClick={handleLogin}
-                  data-auth-trigger="login"
-                  className="border-zinc-700"
+                  className="bg-indigo-600 hover:bg-indigo-700 flex items-center gap-2"
                 >
-                  Login
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleRegister}
-                  data-auth-trigger="register"
-                  className="bg-purple-600 hover:bg-purple-700"
-                >
-                  Register
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M13.545 2.907a13.227 13.227 0 0 0-3.257-1.011.05.05 0 0 0-.052.025c-.141.25-.297.577-.406.833a12.19 12.19 0 0 0-3.658 0 8.258 8.258 0 0 0-.412-.833.051.051 0 0 0-.052-.025c-1.125.194-2.22.534-3.257 1.011a.041.041 0 0 0-.021.018C.356 6.024-.213 9.047.066 12.032c.001.014.01.028.021.037a13.276 13.276 0 0 0 3.995 2.02.05.05 0 0 0 .056-.019c.308-.42.582-.863.818-1.329a.05.05 0 0 0-.01-.059.051.051 0 0 0-.018-.011 8.875 8.875 0 0 1-1.248-.595.05.05 0 0 1-.02-.066.051.051 0 0 1 .015-.019c.084-.063.168-.129.248-.195a.05.05 0 0 1 .051-.007c2.619 1.196 5.454 1.196 8.041 0a.052.052 0 0 1 .053.007c.08.066.164.132.248.195a.051.051 0 0 1-.004.085 8.254 8.254 0 0 1-1.249.594.05.05 0 0 0-.03.03.052.052 0 0 0 .003.041c.24.465.515.909.817 1.329a.05.05 0 0 0 .056.019 13.235 13.235 0 0 0 4.001-2.02.049.049 0 0 0 .021-.037c.334-3.451-.559-6.449-2.366-9.106a.034.034 0 0 0-.02-.019Zm-8.198 7.307c-.789 0-1.438-.724-1.438-1.612 0-.889.637-1.613 1.438-1.613.807 0 1.45.73 1.438 1.613 0 .888-.637 1.612-1.438 1.612Zm5.316 0c-.788 0-1.438-.724-1.438-1.612 0-.889.637-1.613 1.438-1.613.807 0 1.451.73 1.438 1.613 0 .888-.631 1.612-1.438 1.612Z"/>
+                  </svg>
+                  Login with Discord
                 </Button>
               </div>
             )}
@@ -271,35 +243,9 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   onClick={closeSidebar}
                 />
                 <NavItem
-                  to="/transactions"
-                  label="Transactions"
-                  isActive={pathname === "/transactions"}
-                  onClick={closeSidebar}
-                />
-                <NavItem
-                  to="/history"
-                  label="History"
-                  isActive={pathname === "/history"}
-                  onClick={closeSidebar}
-                />
-                <NavItem
                   to="/leaderboard"
                   label="Leaderboard"
                   isActive={pathname === "/leaderboard"}
-                  onClick={closeSidebar}
-                />
-              </ul>
-            </div>
-            
-            <div>
-              <h3 className="px-4 text-xs uppercase text-zinc-400 font-semibold tracking-wider mb-2">
-                Ship Cases
-              </h3>
-              <ul>
-                <NavItem
-                  to="/cases"
-                  label="Ship Cases"
-                  isActive={pathname === "/cases"}
                   onClick={closeSidebar}
                 />
               </ul>
@@ -338,12 +284,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   to="/games/hilo"
                   label="HiLo"
                   isActive={pathname === "/games/hilo"}
-                  onClick={closeSidebar}
-                />
-                <NavItem
-                  to="/games/roulette"
-                  label="Roulette"
-                  isActive={pathname === "/games/roulette"}
                   onClick={closeSidebar}
                 />
               </ul>
@@ -395,10 +335,8 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       </div>
 
       <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        activeTab={activeAuthTab}
-        setActiveTab={setActiveAuthTab}
+        open={isAuthModalOpen}
+        onOpenChange={setIsAuthModalOpen}
       />
 
       <Dialog open={isDepositModalOpen} onOpenChange={setIsDepositModalOpen}>
@@ -410,21 +348,25 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-2">
-            {!discordService.getLinkedDiscordId(user?.username || "") && (
-              <div className="space-y-2">
-                <Label htmlFor="discord-id">Discord User ID</Label>
-                <Input
-                  id="discord-id"
-                  value={discordId}
-                  onChange={(e) => setDiscordId(e.target.value)}
-                  placeholder="Enter your Discord user ID"
-                  className="bg-zinc-800 border-zinc-700"
-                />
-                <p className="text-sm text-zinc-400">
-                  You need to link your Discord account once.
-                </p>
+            <div className="bg-zinc-800 p-3 rounded-md">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-zinc-400">Discord Balance:</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold">{discordBalance?.toLocaleString() || "0"} ₡</span>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="h-6 w-6 rounded-full p-0"
+                    onClick={refreshDiscordBalance}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                      <path fillRule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                      <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                    </svg>
+                  </Button>
+                </div>
               </div>
-            )}
+            </div>
             <div className="space-y-2">
               <Label htmlFor="deposit-amount">Amount</Label>
               <Input
@@ -462,21 +404,25 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-2">
-            {!discordService.getLinkedDiscordId(user?.username || "") && (
-              <div className="space-y-2">
-                <Label htmlFor="discord-id-withdraw">Discord User ID</Label>
-                <Input
-                  id="discord-id-withdraw"
-                  value={discordId}
-                  onChange={(e) => setDiscordId(e.target.value)}
-                  placeholder="Enter your Discord user ID"
-                  className="bg-zinc-800 border-zinc-700"
-                />
-                <p className="text-sm text-zinc-400">
-                  You need to link your Discord account once.
-                </p>
+            <div className="bg-zinc-800 p-3 rounded-md">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-zinc-400">Discord Balance:</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold">{discordBalance?.toLocaleString() || "0"} ₡</span>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className="h-6 w-6 rounded-full p-0"
+                    onClick={refreshDiscordBalance}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
+                      <path fillRule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/>
+                      <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/>
+                    </svg>
+                  </Button>
+                </div>
               </div>
-            )}
+            </div>
             <div className="space-y-2">
               <Label htmlFor="withdraw-amount">Amount</Label>
               <Input

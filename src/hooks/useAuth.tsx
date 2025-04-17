@@ -1,16 +1,28 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { discordService } from "@/services/discord";
 
 interface User {
   id: string;
   username: string;
   balance: number;
   isAdmin: boolean;
+  discordId?: string;
+  discordAvatar?: string;
+}
+
+interface DiscordUser {
+  id: string;
+  username: string;
+  discriminator: string;
+  avatar: string;
+  balance?: number;
 }
 
 interface AuthContextProps {
   user: User | null;
   login: (username: string, password: string) => Promise<void>;
+  loginWithDiscord: (discordUser: DiscordUser) => Promise<void>;
   register: (username: string, password: string) => Promise<void>;
   logout: () => void;
   updateBalance: (newBalance: number) => void;
@@ -21,6 +33,7 @@ interface AuthContextProps {
 const AuthContext = createContext<AuthContextProps>({
   user: null,
   login: async () => {},
+  loginWithDiscord: async () => {},
   register: async () => {},
   logout: () => {},
   updateBalance: () => {},
@@ -68,6 +81,29 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       setRegisteredUsers(initialUsers);
       localStorage.setItem(REGISTERED_USERS_KEY, JSON.stringify(initialUsers));
     }
+    
+    // Check if logged in with Discord
+    const checkDiscordLogin = async () => {
+      if (discordService.isAuthenticated() && !user) {
+        const discordUser = await discordService.getCurrentUser();
+        if (discordUser) {
+          const existingUser = Object.values(registeredUsers).find(
+            u => u.user.discordId === discordUser.id
+          );
+          
+          if (existingUser) {
+            // User already exists, login
+            setUser(existingUser.user);
+            localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(existingUser.user));
+          } else {
+            // Create new user from Discord
+            loginWithDiscord(discordUser);
+          }
+        }
+      }
+    };
+    
+    checkDiscordLogin();
   }, []);
 
   const saveUsers = (users: Record<string, {password: string, user: User}>) => {
@@ -86,6 +122,53 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
           resolve();
         } else {
           reject(new Error("Invalid credentials"));
+        }
+      }, 500); // Simulate network delay
+    });
+  };
+  
+  const loginWithDiscord = async (discordUser: DiscordUser): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        try {
+          // Check if user with this Discord ID already exists
+          const existingUserEntry = Object.entries(registeredUsers).find(
+            ([_, data]) => data.user.discordId === discordUser.id
+          );
+          
+          let userData: User;
+          
+          if (existingUserEntry) {
+            // User exists, update their info
+            userData = existingUserEntry[1].user;
+          } else {
+            // Create new user
+            userData = {
+              id: `user-${Date.now()}`,
+              username: `${discordUser.username}#${discordUser.discriminator}`,
+              balance: 10000, // Starting balance
+              isAdmin: false,
+              discordId: discordUser.id,
+              discordAvatar: discordUser.avatar,
+            };
+            
+            // Save to registered users
+            const updatedUsers = {
+              ...registeredUsers,
+              [userData.username]: {
+                password: "discord-oauth", // Placeholder, not used for login
+                user: userData,
+              },
+            };
+            
+            saveUsers(updatedUsers);
+          }
+          
+          setUser(userData);
+          localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+          resolve();
+        } catch (error) {
+          reject(error);
         }
       }, 500); // Simulate network delay
     });
@@ -126,6 +209,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   const logout = () => {
     setUser(null);
     localStorage.removeItem(USER_STORAGE_KEY);
+    discordService.logout();
   };
 
   const updateBalance = (newBalance: number) => {
@@ -153,6 +237,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
       value={{
         user,
         login,
+        loginWithDiscord,
         register,
         logout,
         updateBalance,

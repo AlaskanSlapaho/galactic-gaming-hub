@@ -13,12 +13,9 @@ import DiceGame from "./pages/games/DiceGame";
 import TowerGame from "./pages/games/TowerGame";
 import BlackjackGame from "./pages/games/BlackjackGame";
 import HiLoGame from "./pages/games/HiLoGame";
-import RouletteGame from "./pages/games/RouletteGame";
-import CasesGame from "./pages/games/CasesGame";
 import LeaderboardPage from "./pages/LeaderboardPage";
-import HistoryPage from "./pages/HistoryPage";
 import AdminPanel from "./pages/AdminPanel";
-import TransactionsPage from "./pages/TransactionsPage"; 
+import { DiscordAuthCallback } from "./components/auth/DiscordAuthCallback";
 
 const queryClient = new QueryClient();
 
@@ -29,23 +26,54 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <MainLayout>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/games/mines" element={<MinesGame />} />
-              <Route path="/games/dice" element={<DiceGame />} />
-              <Route path="/games/tower" element={<TowerGame />} />
-              <Route path="/games/blackjack" element={<BlackjackGame />} />
-              <Route path="/games/hilo" element={<HiLoGame />} />
-              <Route path="/games/roulette" element={<RouletteGame />} />
-              <Route path="/cases" element={<CasesGame />} />
-              <Route path="/leaderboard" element={<LeaderboardPage />} />
-              <Route path="/history" element={<HistoryPage />} />
-              <Route path="/transactions" element={<TransactionsPage />} />
-              <Route path="/admin" element={<AdminPanel />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </MainLayout>
+          <Routes>
+            <Route path="/auth/callback" element={<DiscordAuthCallback />} />
+            <Route path="/" element={
+              <MainLayout>
+                <HomePage />
+              </MainLayout>
+            } />
+            <Route path="/games/mines" element={
+              <MainLayout>
+                <MinesGame />
+              </MainLayout>
+            } />
+            <Route path="/games/dice" element={
+              <MainLayout>
+                <DiceGame />
+              </MainLayout>
+            } />
+            <Route path="/games/tower" element={
+              <MainLayout>
+                <TowerGame />
+              </MainLayout>
+            } />
+            <Route path="/games/blackjack" element={
+              <MainLayout>
+                <BlackjackGame />
+              </MainLayout>
+            } />
+            <Route path="/games/hilo" element={
+              <MainLayout>
+                <HiLoGame />
+              </MainLayout>
+            } />
+            <Route path="/leaderboard" element={
+              <MainLayout>
+                <LeaderboardPage />
+              </MainLayout>
+            } />
+            <Route path="/admin" element={
+              <MainLayout>
+                <AdminPanel />
+              </MainLayout>
+            } />
+            <Route path="*" element={
+              <MainLayout>
+                <NotFound />
+              </MainLayout>
+            } />
+          </Routes>
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
