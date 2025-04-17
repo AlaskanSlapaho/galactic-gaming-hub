@@ -334,16 +334,6 @@ const RouletteGame = () => {
   // Render bet table
   const renderBetTable = () => {
     return (
-      <TabsList className="grid grid-cols-3 gap-2 mb-4">
-        <TabsTrigger value="inside-bets">Inside Bets</TabsTrigger>
-        <TabsTrigger value="outside-bets">Outside Bets</TabsTrigger>
-      </TabsList>
-    );
-  };
-  
-  // Render bet table
-  const renderBetTable = () => {
-    return (
       <Tabs defaultValue="inside-bets" className="w-full">
         <TabsList className="grid grid-cols-2 gap-2 mb-4">
           <TabsTrigger value="inside-bets">Inside Bets</TabsTrigger>

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,15 +5,16 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/hooks/useAuth";
-import AuthModal from "../auth/AuthModal";
-import { AuthTabs } from "../auth/AuthModal";
+import { AuthModal } from "../auth/AuthModal";
 import { MenuIcon, X } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useMobile } from "@/hooks/use-mobile";
 import ChatBox from "../chat/ChatBox";
-import AdminCommandHandler from "../admin/AdminCommandHandler";
+import { AdminCommandHandler } from "../admin/AdminCommandHandler";
 import { toast } from "sonner";
 import { discordService } from "@/services/discord";
+
+type AuthTabs = "login" | "register";
 
 interface NavItemProps {
   to: string;
@@ -42,7 +42,7 @@ const NavItem = ({ to, label, isActive, onClick }: NavItemProps) => (
 const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { pathname } = useLocation();
-  const { isMobile } = useMobile();
+  const { isMobile } = useMobile() as { isMobile: boolean };
   const { user, isAuthenticated, logout, updateBalance } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [activeAuthTab, setActiveAuthTab] = useState<AuthTabs>("login");
@@ -81,7 +81,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       return;
     }
 
-    // Check if user has Discord ID linked
     let userDiscordId = discordService.getLinkedDiscordId(user.username);
     
     if (!userDiscordId && !discordId) {
@@ -90,7 +89,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
 
     if (discordId && !userDiscordId) {
-      // Link the Discord account
       const linked = await discordService.linkDiscordAccount(discordId, user.username);
       if (!linked) {
         toast.error("Failed to link Discord account");
@@ -99,17 +97,14 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       userDiscordId = discordId;
     }
 
-    // Check if user has enough credits on Discord
     const discordCredits = await discordService.checkUserCredits(userDiscordId || "");
     if (!discordCredits || discordCredits < amount) {
       toast.error("You don't have enough credits on Discord");
       return;
     }
 
-    // Process the deposit
     const success = await discordService.depositCredits(userDiscordId!, amount);
     if (success) {
-      // Update user balance
       updateBalance((user.balance || 0) + amount);
       toast.success(`Successfully deposited ${amount} credits`);
       setIsDepositModalOpen(false);
@@ -135,7 +130,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       return;
     }
 
-    // Check if user has Discord ID linked
     let userDiscordId = discordService.getLinkedDiscordId(user.username);
     
     if (!userDiscordId && !discordId) {
@@ -144,7 +138,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     }
 
     if (discordId && !userDiscordId) {
-      // Link the Discord account
       const linked = await discordService.linkDiscordAccount(discordId, user.username);
       if (!linked) {
         toast.error("Failed to link Discord account");
@@ -153,10 +146,8 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       userDiscordId = discordId;
     }
 
-    // Process the withdrawal
     const success = await discordService.withdrawCredits(userDiscordId!, amount);
     if (success) {
-      // Update user balance
       updateBalance((user.balance || 0) - amount);
       toast.success(`Successfully withdrew ${amount} credits to Discord`);
       setIsWithdrawModalOpen(false);
@@ -171,7 +162,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <div className="flex flex-col h-screen bg-zinc-950 text-white">
-      {/* Top navigation bar */}
       <header className="bg-zinc-900 border-b border-zinc-800 p-4">
         <div className="container mx-auto flex justify-between items-center">
           <div className="flex items-center">
@@ -256,7 +246,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
         <aside
           className={`bg-zinc-900 border-r border-zinc-800 w-64 fixed lg:static top-0 left-0 h-full z-40 transform transition-transform duration-300 ${
             isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
@@ -270,7 +259,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </div>
 
           <nav className="pt-4 px-2 space-y-6">
-            {/* Main Navigation */}
             <div>
               <h3 className="px-4 text-xs uppercase text-zinc-400 font-semibold tracking-wider mb-2">
                 Main
@@ -303,7 +291,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               </ul>
             </div>
             
-            {/* Case Section */}
             <div>
               <h3 className="px-4 text-xs uppercase text-zinc-400 font-semibold tracking-wider mb-2">
                 Ship Cases
@@ -318,7 +305,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               </ul>
             </div>
 
-            {/* Games Section */}
             <div>
               <h3 className="px-4 text-xs uppercase text-zinc-400 font-semibold tracking-wider mb-2">
                 Games
@@ -376,14 +362,12 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </nav>
         </aside>
 
-        {/* Chat panel */}
         {isChatVisible && (
           <div className="hidden lg:block w-72 border-l border-zinc-800">
             <ChatBox />
           </div>
         )}
 
-        {/* Mobile chat overlay */}
         {isMobile && isChatVisible && (
           <div className="fixed inset-0 bg-black/50 z-50">
             <div className="absolute right-0 top-0 h-full w-[90vw] max-w-md">
@@ -403,7 +387,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </div>
         )}
 
-        {/* Main content */}
         <main className={`flex-1 overflow-y-auto p-4 md:p-6 ${isChatVisible ? "lg:mr-72" : ""}`}>
           <div className="container mx-auto">
             {children}
@@ -411,7 +394,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </main>
       </div>
 
-      {/* Auth Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
@@ -419,7 +401,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         setActiveTab={setActiveAuthTab}
       />
 
-      {/* Deposit Modal */}
       <Dialog open={isDepositModalOpen} onOpenChange={setIsDepositModalOpen}>
         <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
           <DialogHeader>
@@ -472,7 +453,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </DialogContent>
       </Dialog>
 
-      {/* Withdraw Modal */}
       <Dialog open={isWithdrawModalOpen} onOpenChange={setIsWithdrawModalOpen}>
         <DialogContent className="bg-zinc-900 border-zinc-800 text-white">
           <DialogHeader>
@@ -528,7 +508,6 @@ const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </DialogContent>
       </Dialog>
 
-      {/* Admin command handler */}
       <AdminCommandHandler />
     </div>
   );
