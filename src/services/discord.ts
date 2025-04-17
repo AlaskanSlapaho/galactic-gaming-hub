@@ -26,9 +26,12 @@ class DiscordService {
   
   // Generate OAuth2 login URL
   getAuthUrl(): string {
+    // Make sure the redirect_uri is URL encoded and matches exactly what's registered in Discord
+    const encodedRedirectUri = encodeURIComponent(this.redirectUri);
+    
     const params = new URLSearchParams({
       client_id: this.credentials.clientId,
-      redirect_uri: this.redirectUri,
+      redirect_uri: this.redirectUri, // Discord requires non-encoded URI in the params
       response_type: 'code',
       scope: 'identify'
     });

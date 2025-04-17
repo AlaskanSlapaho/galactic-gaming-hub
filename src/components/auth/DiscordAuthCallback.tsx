@@ -14,21 +14,35 @@ export function DiscordAuthCallback() {
     const handleAuth = async () => {
       const params = new URLSearchParams(location.search);
       const code = params.get('code');
+      const error = params.get('error');
+      const errorDescription = params.get('error_description');
+      
+      console.log('Discord auth callback received:', { code, error, errorDescription });
+      
+      if (error) {
+        console.error('Discord auth error:', error, errorDescription);
+        toast.error(`Authentication failed: ${errorDescription || error}`);
+        navigate('/');
+        return;
+      }
       
       if (code) {
         try {
+          console.log('Attempting to exchange code for token');
           // Get token
           const token = await discordService.getToken(code);
           if (!token) {
             throw new Error('Failed to obtain token');
           }
           
+          console.log('Token obtained, getting user profile');
           // Get user
           const discordUser = await discordService.getCurrentUser();
           if (!discordUser) {
             throw new Error('Failed to get user profile');
           }
           
+          console.log('User profile obtained, logging in');
           // Login to our app with Discord
           await loginWithDiscord(discordUser);
           
