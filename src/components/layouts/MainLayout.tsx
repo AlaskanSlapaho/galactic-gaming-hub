@@ -41,7 +41,7 @@ const NavItem = ({ to, label, isActive, onClick }: NavItemProps) => (
 const MainLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { pathname } = useLocation();
-  const { isMobile } = useMobile() as { isMobile: boolean };
+  const { isMobile } = useMobile();
   const { user, isAuthenticated, logout, updateBalance } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
   const [isChatVisible, setIsChatVisible] = useState<boolean>(false);
