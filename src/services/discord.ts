@@ -63,13 +63,13 @@ class DiscordService {
       }
       
       // In a real implementation, this would call the Discord API
-      // For this demo, we'll create a mock user
+      // For this demo, we'll create a mock user without a balance
       const mockUser: DiscordUser = {
         id: `${Math.floor(Math.random() * 1000000)}`,
         username: "DiscordUser",
         discriminator: "0000",
         avatar: "",
-        balance: 5000
+        // No balance for new users
       };
       
       // Cache the user
@@ -96,16 +96,15 @@ class DiscordService {
   async checkUserCredits(discordUserId: string): Promise<number | null> {
     try {
       // In a real implementation, this would make an API call to your Discord bot
-      // For now, we'll simulate a response
+      // For now, we'll return 0 for a new user
       
       const user = await this.getCurrentUser();
-      if (user && user.balance) {
+      if (user && user.balance !== undefined) {
         return user.balance;
       }
       
-      // Mock response based on Discord user ID
-      const mockCredits = parseInt(discordUserId) % 10000 + 1000;
-      return mockCredits;
+      // Default to 0 credits for new users
+      return 0;
     } catch (error) {
       console.error("Error checking Discord credits:", error);
       return null;
@@ -116,7 +115,6 @@ class DiscordService {
   async depositCredits(discordUserId: string, amount: number): Promise<boolean> {
     try {
       // In a real implementation, this would make an API call to your Discord bot
-      // For now, we'll return true to simulate success
       
       // Update the cached user balance
       const user = await this.getCurrentUser();
@@ -136,7 +134,6 @@ class DiscordService {
   async withdrawCredits(discordUserId: string, amount: number): Promise<boolean> {
     try {
       // In a real implementation, this would make an API call to your Discord bot
-      // For now, we'll return true to simulate success
       
       // Update the cached user balance
       const user = await this.getCurrentUser();
@@ -155,7 +152,7 @@ class DiscordService {
   // Get Discord balance
   async getDiscordBalance(): Promise<number | null> {
     const user = await this.getCurrentUser();
-    return user?.balance || null;
+    return user?.balance || 0; // Return 0 if balance is undefined
   }
 }
 

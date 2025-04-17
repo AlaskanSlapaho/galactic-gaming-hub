@@ -129,7 +129,7 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
   
   const loginWithDiscord = async (discordUser: DiscordUser): Promise<void> => {
     return new Promise((resolve, reject) => {
-      setTimeout(() => {
+      setTimeout(async () => {
         try {
           // Check if user with this Discord ID already exists
           const existingUserEntry = Object.entries(registeredUsers).find(
@@ -142,11 +142,11 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({ children }
             // User exists, update their info
             userData = existingUserEntry[1].user;
           } else {
-            // Create new user
+            // Create new user with 0 balance
             userData = {
               id: `user-${Date.now()}`,
               username: `${discordUser.username}#${discordUser.discriminator}`,
-              balance: 10000, // Starting balance
+              balance: 0, // Start with 0 balance
               isAdmin: false,
               discordId: discordUser.id,
               discordAvatar: discordUser.avatar,
