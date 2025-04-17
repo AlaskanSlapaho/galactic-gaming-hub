@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
@@ -15,78 +14,59 @@ import { useAuth } from "@/hooks/useAuth";
 const LeaderboardPage = () => {
   const { user } = useAuth();
   
-  // We'll simulate real player data based on the current user
-  // In a real application, this would come from a database
-  const generateTopPlayers = () => {
-    const defaultPlayers = [
-      { rank: 1, username: "Lucky777", winnings: 250000, games: 543, biggestWin: 35000 },
-      { rank: 2, username: "GalaxyGambler", winnings: 175000, games: 612, biggestWin: 21000 },
-      { rank: 3, username: "CryptoWinner", winnings: 125000, games: 387, biggestWin: 18500 },
-      { rank: 4, username: "BetMaster", winnings: 95000, games: 429, biggestWin: 15000 },
-      { rank: 5, username: "LuckyStreak", winnings: 85000, games: 315, biggestWin: 12000 },
-      { rank: 6, username: "RiskyPlayer", winnings: 78000, games: 276, biggestWin: 9500 },
-      { rank: 7, username: "HighRoller", winnings: 65000, games: 210, biggestWin: 8700 },
-      { rank: 8, username: "DiamondBet", winnings: 58000, games: 195, biggestWin: 7800 },
-      { rank: 9, username: "VIPGamer", winnings: 42000, games: 168, biggestWin: 6200 },
-      { rank: 10, username: "LuckyCharm", winnings: 35000, games: 124, biggestWin: 5500 },
-    ];
-
-    // If we have a logged-in user, add them to the leaderboard if they're not already there
-    if (user && !defaultPlayers.some(p => p.username === user.username)) {
-      // Insert the user at a random position from 1-5, shifting others down
-      const userPosition = Math.floor(Math.random() * 5) + 1;
-      const userWinnings = Math.floor(Math.random() * 100000) + 100000;
-      
-      // Create a copy to avoid mutating the original array
-      const updatedPlayers = [...defaultPlayers];
-      
-      // Insert the user and update ranks
-      updatedPlayers.splice(userPosition - 1, 0, {
-        rank: userPosition,
-        username: user.username,
-        winnings: userWinnings,
-        games: Math.floor(Math.random() * 300) + 100,
-        biggestWin: Math.floor(userWinnings / (Math.random() * 5 + 5)),
-      });
-      
-      // Update ranks for all players
-      return updatedPlayers.slice(0, 10).map((player, idx) => ({
-        ...player,
-        rank: idx + 1
-      }));
-    }
+  // Use registered users from local storage
+  const getRegisteredUsers = () => {
+    const storedUsers = localStorage.getItem("galactic_ledgers_users");
+    if (!storedUsers) return {};
+    return JSON.parse(storedUsers);
+  };
+  
+  const generateLeaderboardData = () => {
+    const registeredUsers = getRegisteredUsers();
     
-    return defaultPlayers;
+    if (!registeredUsers) return [];
+    
+    // Convert registered users to array and sort by balance
+    const players = Object.values(registeredUsers)
+      .map((userData: any) => userData.user)
+      .filter(user => user !== undefined)
+      .sort((a: any, b: any) => b.balance - a.balance);
+    
+    // Add rank to each player
+    return players.map((player: any, index) => ({
+      rank: index + 1,
+      username: player.username,
+      winnings: player.balance,
+      games: Math.floor(Math.random() * 300) + 100, // Placeholder for now
+      biggestWin: Math.floor(player.balance / (Math.random() * 5 + 5)), // Placeholder
+    }));
   };
 
   const generateRecentWins = () => {
-    const defaultWins = [
-      { username: "StellarWinner", game: "Mines", amount: 22500, multiplier: "15.0x", timestamp: "2h ago" },
-      { username: "MoonPlayer", game: "Tower", amount: 18000, multiplier: "12.0x", timestamp: "4h ago" },
-      { username: "CryptoKing", game: "Blackjack", amount: 15000, multiplier: "2.5x", timestamp: "7h ago" },
-      { username: "BetWizard", game: "Dice", amount: 12500, multiplier: "25.0x", timestamp: "10h ago" },
-      { username: "GalacticBet", game: "HiLo", amount: 9500, multiplier: "19.0x", timestamp: "12h ago" },
-    ];
-
-    // If user is logged in, add them to the recent wins
-    if (user) {
-      const userGameTypes = ["Mines", "Dice", "Tower", "Blackjack", "HiLo"];
+    const registeredUsers = getRegisteredUsers();
+    
+    if (!registeredUsers) return [];
+    
+    // Get up to 5 users for recent wins
+    const players = Object.values(registeredUsers)
+      .map((userData: any) => userData.user)
+      .filter(user => user !== undefined)
+      .slice(0, 5);
+    
+    return players.map((player: any) => {
+      const userGameTypes = ["Mines", "Dice", "Tower", "Blackjack", "HiLo", "Roulette", "Cases"];
       const userGame = userGameTypes[Math.floor(Math.random() * userGameTypes.length)];
-      const userWin = {
-        username: user.username,
+      return {
+        username: player.username,
         game: userGame,
         amount: Math.floor(Math.random() * 20000) + 5000,
         multiplier: (Math.random() * 15 + 2).toFixed(1) + "x",
-        timestamp: "Just now"
+        timestamp: Math.floor(Math.random() * 12) + 1 + "h ago"
       };
-      
-      return [userWin, ...defaultWins.slice(0, 4)];
-    }
-    
-    return defaultWins;
+    });
   };
 
-  const topPlayers = generateTopPlayers();
+  const topPlayers = generateLeaderboardData();
   const recentBigWins = generateRecentWins();
 
   return (

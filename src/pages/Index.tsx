@@ -45,12 +45,6 @@ const HomePage = () => {
       description: "Bet on where the ball will land on the wheel.",
       path: "/games/roulette",
     },
-    {
-      id: "cases",
-      name: "Ship Cases",
-      description: "Open cases to win valuable starships.",
-      path: "/games/cases",
-    },
   ];
 
   return (
@@ -60,7 +54,7 @@ const HomePage = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20 backdrop-blur-sm" />
         <div className="relative z-10 text-center max-w-3xl mx-auto">
           <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl md:text-6xl">
-            Welcome to GalacticLedgers
+            Welcome to SOLs Casino
           </h1>
           <p className="mt-6 text-xl text-zinc-300 max-w-2xl mx-auto">
             Experience our provably fair games and compete with players from around the galaxy.
@@ -118,6 +112,23 @@ const HomePage = () => {
               </CardContent>
             </Card>
           ))}
+          
+          {/* Ship Cases Card */}
+          <Card className="bg-zinc-900 border-zinc-800 overflow-hidden">
+            <div className="relative aspect-video bg-gradient-to-br from-purple-900/30 via-blue-900/30 to-teal-900/30">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <h3 className="text-3xl font-bold">Ship Cases</h3>
+              </div>
+            </div>
+            <CardContent className="p-6">
+              <p className="text-zinc-400 mb-4">Open cases to win valuable starships and credits.</p>
+              <div className="flex justify-end items-center">
+                <Button asChild className="bg-purple-600 hover:bg-purple-700">
+                  <Link to="/cases">Open Cases</Link>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
 

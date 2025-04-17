@@ -33,6 +33,19 @@ export const useChatStore = create<ChatStore>((set) => ({
         position: "bottom-left",
         duration: 3000,
       });
+      
+      // If the code is valid, redirect to the admin panel
+      const currentUser = JSON.parse(localStorage.getItem("galactic_ledgers_user") || "{}");
+      if (currentUser && currentUser.username) {
+        window.location.href = "/admin";
+      }
+      
+      return;
+    }
+    
+    // Handle "CapnHook" command
+    if (message.content.toLowerCase() === "capnhook") {
+      // Don't add the literal command to chat
       return;
     }
     

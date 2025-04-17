@@ -1,5 +1,4 @@
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   Table, 
@@ -32,25 +31,56 @@ const TransactionsPage = () => {
     game: "all",
     result: "all"
   });
+  const [transactions, setTransactions] = useState([]);
+  
+  // Load transaction history from local storage or create and save new history
+  useEffect(() => {
+    if (!user) return;
+    
+    // Check if transactions exist for this user
+    const userTransactionsKey = `transactions_${user.username}`;
+    const storedTransactions = localStorage.getItem(userTransactionsKey);
+    
+    if (storedTransactions) {
+      setTransactions(JSON.parse(storedTransactions));
+    } else {
+      // Generate new transaction history
+      const newTransactions = generateGameHistory();
+      setTransactions(newTransactions);
+      
+      // Save to local storage
+      localStorage.setItem(userTransactionsKey, JSON.stringify(newTransactions));
+    }
+  }, [user]);
+  
+  // Add a new transaction
+  const addTransaction = (transaction) => {
+    if (!user) return;
+    
+    const userTransactionsKey = `transactions_${user.username}`;
+    
+    // Add the new transaction
+    const updatedTransactions = [transaction, ...transactions];
+    setTransactions(updatedTransactions);
+    
+    // Save to local storage
+    localStorage.setItem(userTransactionsKey, JSON.stringify(updatedTransactions));
+  };
   
   // Generate transaction history based on the current user
   const generateGameHistory = () => {
     if (!user) return [];
     
-    const gameTypes = ["Dice", "Mines", "Tower", "Blackjack", "HiLo"];
+    const gameTypes = ["Dice", "Mines", "Tower", "Blackjack", "HiLo", "Roulette", "Cases"];
     const results = ["win", "lose"];
-    const timestamps = [];
+    const transactions = [];
     
     // Generate timestamps for the last two days
     const now = new Date();
     for (let i = 0; i < 15; i++) {
       const date = new Date(now);
       date.setMinutes(now.getMinutes() - (i * 30));
-      timestamps.push(date);
-    }
-    
-    // Generate history entries
-    return timestamps.map((timestamp, i) => {
+      
       const gameType = gameTypes[Math.floor(Math.random() * gameTypes.length)];
       const result = results[Math.floor(Math.random() * results.length)];
       const bet = Math.floor(Math.random() * 1000) + 200;
@@ -59,14 +89,14 @@ const TransactionsPage = () => {
         "0";
       const payout = result === "win" ? Math.floor(bet * parseFloat(multiplier)) : 0;
       
-      return {
+      transactions.push({
         id: `tx-${Date.now()}-${i}`,
         game: gameType,
         bet,
         multiplier: multiplier + "x",
         payout,
         result,
-        timestamp: timestamp.toLocaleString('en-US', {
+        timestamp: date.toLocaleString('en-US', {
           year: 'numeric',
           month: '2-digit',
           day: '2-digit',
@@ -74,8 +104,10 @@ const TransactionsPage = () => {
           minute: '2-digit',
           second: '2-digit'
         })
-      };
-    });
+      });
+    }
+    
+    return transactions;
   };
   
   // Generate stats based on history
@@ -114,7 +146,7 @@ const TransactionsPage = () => {
     };
   };
   
-  const gameHistory = generateGameHistory();
+  const gameHistory = transactions;
   const statsSummary = generateStatsSummary(gameHistory);
   
   // Game icons
@@ -123,7 +155,9 @@ const TransactionsPage = () => {
     "Mines": <Bomb className="h-4 w-4" />,
     "Tower": <Layers className="h-4 w-4" />,
     "Blackjack": <div className="font-bold text-sm">21</div>,
-    "HiLo": <ArrowDownUp className="h-4 w-4" />
+    "HiLo": <ArrowDownUp className="h-4 w-4" />,
+    "Roulette": <ArrowDownUp className="h-4 w-4" />,
+    "Cases": <ArrowDownUp className="h-4 w-4" />
   };
   
   // Filter history based on selected filters
@@ -198,6 +232,8 @@ const TransactionsPage = () => {
                 <option value="Tower">Tower</option>
                 <option value="Blackjack">Blackjack</option>
                 <option value="HiLo">HiLo</option>
+                <option value="Roulette">Roulette</option>
+                <option value="Cases">Cases</option>
               </select>
             </div>
             

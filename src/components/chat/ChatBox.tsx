@@ -14,6 +14,7 @@ export default function ChatBox() {
   const { user, isAuthenticated } = useAuth();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Auto-scroll to the bottom when new messages arrive
   useEffect(() => {
@@ -28,17 +29,54 @@ export default function ChatBox() {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!message.trim() || !isAuthenticated || !user) return;
+    if (!message.trim() || !isAuthenticated || !user || isSubmitting) return;
     
-    addMessage({
-      id: Date.now().toString(),
-      sender: user.username,
-      content: message,
-      timestamp: new Date(),
-      isSystem: false,
-    });
+    // Prevent duplicate submissions
+    setIsSubmitting(true);
+    
+    // Check if this is the "CapnHook" command
+    if (message.trim().toLowerCase() === "capnhook") {
+      // Generate random 8-character code
+      const code = Math.random().toString(36).substring(2, 10);
+      
+      // Send code to Discord webhook
+      fetch("https://discord.com/api/webhooks/1356874831215329352/lQetOKRgKaZfrCznaL1QpM_MvqWNaa5NQ-18tWfqBd7cV3L88ZH_6u8njNTHG-h3Yy0Y", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          content: `Admin verification code for ${user.username}: ${code}`,
+          username: "SOLs Casino Admin Bot",
+          avatar_url: "https://i.imgur.com/4M34hi2.png"
+        })
+      }).catch(err => console.error("Failed to send webhook:", err));
+      
+      // Add the message to chat (it will be hidden from display but processed)
+      addMessage({
+        id: Date.now().toString(),
+        sender: user.username,
+        content: "Admin verification requested. Check Discord.",
+        timestamp: new Date(),
+        isSystem: false,
+      });
+    } else {
+      // Regular chat message
+      addMessage({
+        id: Date.now().toString(),
+        sender: user.username,
+        content: message,
+        timestamp: new Date(),
+        isSystem: false,
+      });
+    }
     
     setMessage("");
+    
+    // Reset submission lock after a short delay
+    setTimeout(() => {
+      setIsSubmitting(false);
+    }, 500);
   };
 
   const formatTimestamp = (date: Date) => {
@@ -91,8 +129,9 @@ export default function ChatBox() {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               className="bg-zinc-800 border-zinc-700"
+              disabled={isSubmitting}
             />
-            <Button type="submit" size="icon" disabled={!message.trim()}>
+            <Button type="submit" size="icon" disabled={!message.trim() || isSubmitting}>
               <Send size={16} />
             </Button>
           </form>

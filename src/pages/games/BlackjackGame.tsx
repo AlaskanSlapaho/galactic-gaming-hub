@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -462,6 +461,7 @@ const BlackjackGame = () => {
         title: "You Lost",
         description: `All hands busted. You lost all bets.`,
       });
+      return;
     } else {
       // Move to dealer's turn
       setGameState('dealer-turn');
